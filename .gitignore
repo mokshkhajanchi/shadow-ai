@@ -1,0 +1,16 @@
+.env
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.db
+*.db-wal
+*.db-shm
+thread_contexts.json
+.DS_Store
+bot.log
+bot.log.*
+.knowledge-index.md
+=1.0.0
+knowledge.md
+.claude/
