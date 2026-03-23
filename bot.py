@@ -1236,8 +1236,9 @@ def _create_options(model: str | None = None, thinking_override: str | None = No
         "- For data lookups (tickets, PRs, etc.): show the full results with key fields — don't just summarize.\n"
         "- For code changes: state what you changed, the file(s), and the PR link.\n"
         "- IMPORTANT: After making code changes, ALWAYS run the relevant tests before reporting success. "
-        "For avis (Python): `cd .../services/avis && python -m pytest test/<module>/ -x --tb=short -q`. "
-        "For brunt (JS): `cd .../tests/brunt && npm test`. "
+        f"For avis: `cd {COMMERCE_ROOT}/services/avis && ./run.test.sh test/<relevant_test_dir>/`. "
+        f"For brunt: `cd {COMMERCE_ROOT}/tests/brunt && npm run test`. "
+        f"For mirage: `cd {COMMERCE_ROOT}/services/mirage && ./run.local.test.sh`. "
         "If tests fail, fix the code and re-run. Only report completion after tests pass. "
         "If no tests exist for the changed code, mention this.\n"
         "- Skip preamble like \"I'd be happy to help\". Answer directly.\n"
@@ -1254,6 +1255,14 @@ def _create_options(model: str | None = None, thinking_override: str | None = No
         "'## Code Review by moksh.ai' and status 'Active'. Post inline comments for specific "
         "issues (max 5) also with status 'Active'. Include a verdict: Approve / Request Changes. "
         "This is mandatory for every PR you create.\n"
+        "- After reviewing the PR, also run the test suite for the changed repo and post results. "
+        f"For avis: `cd {COMMERCE_ROOT}/services/avis && ./run.test.sh`. "
+        f"For brunt: `cd {COMMERCE_ROOT}/tests/brunt && npm run test`. "
+        f"For mirage: `cd {COMMERCE_ROOT}/services/mirage && ./run.local.test.sh`. "
+        "Post test results as a PR comment using mcp__azure-devops__repo_create_pull_request_thread "
+        "with content starting with '## Test Report by moksh.ai' and status 'Active'. "
+        "Include: total tests run, passed, failed, skipped, and failure details if any. "
+        "If tests cannot run (missing services), report that instead.\n"
         "--- END RESPONSE GUIDELINES ---\n"
     ]
 
@@ -1703,18 +1712,18 @@ REPO_PATHS = {
 REPO_TEST_CONFIG = {
     "avis": {
         "path": f"{COMMERCE_ROOT}/services/avis",
-        "cmd": "python -m pytest test/ -x --tb=short -q",
-        "cmd_specific": "python -m pytest test/{module}/ -x --tb=short -q",
+        "cmd": "./run.test.sh",
+        "cmd_specific": "./run.test.sh test/{module}/",
     },
     "brunt": {
         "path": f"{COMMERCE_ROOT}/tests/brunt",
-        "cmd": "npm test",
-        "cmd_specific": "npm test -- --suite {module}",
+        "cmd": "npm run test",
+        "cmd_specific": "npm run test",
     },
     "mirage": {
         "path": f"{COMMERCE_ROOT}/services/mirage",
-        "cmd": "npm test",
-        "cmd_specific": "npm test -- {module}",
+        "cmd": "./run.local.test.sh",
+        "cmd_specific": "./run.local.test.sh",
     },
 }
 
