@@ -1236,9 +1236,10 @@ def _create_options(model: str | None = None, thinking_override: str | None = No
         "- For data lookups (tickets, PRs, etc.): show the full results with key fields — don't just summarize.\n"
         "- For code changes: state what you changed, the file(s), and the PR link.\n"
         "- IMPORTANT: After making code changes, ALWAYS run the relevant tests before reporting success. "
-        "Look for existing test files (test_*, *_test.py, *.spec.js, *.test.ts) near the changed code. "
-        "Run them via Bash (pytest, npm test, mocha, etc.). If tests fail, fix the code and re-run. "
-        "Only report completion after tests pass. If no tests exist for the changed code, mention this.\n"
+        "For avis (Python): `cd .../services/avis && python -m pytest test/<module>/ -x --tb=short -q`. "
+        "For brunt (JS): `cd .../tests/brunt && npm test`. "
+        "If tests fail, fix the code and re-run. Only report completion after tests pass. "
+        "If no tests exist for the changed code, mention this.\n"
         "- Skip preamble like \"I'd be happy to help\". Answer directly.\n"
         "- Use Slack formatting: *bold*, `code`, bullet points. No markdown headers (# ##).\n"
         "- When the user asks for data from external systems, "
@@ -1690,11 +1691,31 @@ def _download_slack_files(files: list[dict]) -> list[dict]:
 # ─── PR Review ────────────────────────────────────────────────────────────────
 
 # Known local repo paths for git diff
+COMMERCE_ROOT = "/Users/mokshkhajanchi/Documents/projects/Commerce/Commerce-ai"
+
 REPO_PATHS = {
-    "avis": "/Users/mokshkhajanchi/Documents/projects/avis/avis-ai",
-    "brunt": "/Users/mokshkhajanchi/Documents/projects/brunt/brunt-ai",
+    "avis": f"{COMMERCE_ROOT}/services/avis",
+    "brunt": f"{COMMERCE_ROOT}/tests/brunt",
     "api-specifications": "/Users/mokshkhajanchi/Documents/projects/api-specifications/api-specifications-ai",
-    "mirage": "/Users/mokshkhajanchi/Documents/projects/mirage/mirage-ai",
+    "mirage": f"{COMMERCE_ROOT}/services/mirage",
+}
+
+REPO_TEST_CONFIG = {
+    "avis": {
+        "path": f"{COMMERCE_ROOT}/services/avis",
+        "cmd": "python -m pytest test/ -x --tb=short -q",
+        "cmd_specific": "python -m pytest test/{module}/ -x --tb=short -q",
+    },
+    "brunt": {
+        "path": f"{COMMERCE_ROOT}/tests/brunt",
+        "cmd": "npm test",
+        "cmd_specific": "npm test -- --suite {module}",
+    },
+    "mirage": {
+        "path": f"{COMMERCE_ROOT}/services/mirage",
+        "cmd": "npm test",
+        "cmd_specific": "npm test -- {module}",
+    },
 }
 
 ADO_PR_PATTERN = re.compile(
@@ -1954,6 +1975,50 @@ def _process_message(user_id: str, channel: str, thread_ts: str, message_ts: str
         if pr_info and "review" in prompt_lower:
             repo_name, pr_id = pr_info
             _review_pr(repo_name, pr_id, channel, thread_ts)
+            return
+
+        # ── Test command ──
+        if prompt_lower.startswith("test ") or prompt_lower == "test":
+            parts = prompt.strip().split(None, 2)  # ["test", "repo", "module"]
+            repo_name = parts[1].lower() if len(parts) > 1 else None
+            module = parts[2] if len(parts) > 2 else None
+
+            if not repo_name or repo_name not in REPO_TEST_CONFIG:
+                available = ", ".join(REPO_TEST_CONFIG.keys())
+                slack_client.chat_postMessage(
+                    channel=channel, thread_ts=thread_ts,
+                    text=f":test_tube: Usage: `test <repo> [module]`\nAvailable repos: `{available}`\nExample: `test avis module_createorder`",
+                )
+                return
+
+            config = REPO_TEST_CONFIG[repo_name]
+            if module:
+                test_cmd = config["cmd_specific"].format(module=module)
+            else:
+                test_cmd = config["cmd"]
+
+            progress_msg = slack_client.chat_postMessage(
+                channel=channel, thread_ts=thread_ts,
+                text=f":test_tube: Running tests for *{repo_name}*{f' ({module})' if module else ''}...",
+            )
+            progress_ts = progress_msg.get("ts")
+
+            test_prompt = (
+                f"Run the following test command and report the results:\n\n"
+                f"```\ncd {config['path']} && {test_cmd}\n```\n\n"
+                f"After running:\n"
+                f"1. Report the total tests run, passed, failed, skipped\n"
+                f"2. If any tests failed, show the failure details with file paths and line numbers\n"
+                f"3. If all passed, just say 'All tests passed' with the count\n"
+                f"Keep the response concise."
+            )
+
+            test_key = f"test_{repo_name}_{int(time.time())}"
+            response, cost_info = invoke_claude_code(test_prompt, test_key, progress_ts=progress_ts)
+            if cost_info:
+                db_save_usage(thread_ts, cost_info)
+            remove_session(test_key)
+            send_response_with_stop_button(channel, thread_ts, response)
             return
 
         # ── Daily budget check ──
