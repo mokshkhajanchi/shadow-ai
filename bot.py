@@ -1338,9 +1338,17 @@ async def _collect_response(sdk_client, thread_ts: str = None, channel: str = No
                         tool_info = f"🔧 {block.name}"
                         if block.name == "Bash":
                             cmd = block.input.get("command", "")
+                            # Redact secrets from displayed command
+                            cmd = re.sub(r"(Bearer|Token|Authorization:?|api[_-]?key|password|secret|token)\s+\S+", r"\1 [REDACTED]", cmd, flags=re.IGNORECASE)
+                            cmd = re.sub(r"(xoxb-|xapp-|sk-|ghp_|gho_|ATATT)\S+", "[REDACTED]", cmd)
                             tool_info += f": `{cmd[:120]}`"
                         elif block.name in ("Read", "Write", "Edit"):
-                            tool_info += f": {block.input.get('file_path', '')}"
+                            fpath = block.input.get("file_path", "")
+                            # Flag sensitive file reads
+                            if any(s in fpath.lower() for s in [".env", "credentials", "secret", "token", "password"]):
+                                tool_info += f": {fpath} *(sensitive file)*"
+                            else:
+                                tool_info += f": {fpath}"
                         elif block.name == "Glob":
                             tool_info += f": {block.input.get('pattern', '')}"
                         elif block.name == "Grep":
