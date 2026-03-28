@@ -1,0 +1,10 @@
+services:
+  bot:
+    build: .
+    env_file: .env
+    volumes:
+      # Mount your local projects so Claude Code can access them
+      - ${CLAUDE_WORK_DIR:-~/Projects}:/workspace
+      # Mount Claude config for MCP server discovery
+      - ~/.claude:/root/.claude:ro
+    restart: unless-stopped

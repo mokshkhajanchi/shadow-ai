@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "shadow-ai"
+version = "1.0.0"
+description = "shadow.ai — Your AI co-worker that handles everyday tasks via Slack"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = [
+    "slack-bolt>=1.18.0",
+    "slack-sdk>=3.27.0",
+    "claude-agent-sdk>=0.1.48",
+    "anyio>=4.0.0",
+    "python-dotenv>=1.0.0",
+    "httpx>=0.24.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "pytest-asyncio", "pytest-cov", "ruff"]
+
+[project.scripts]
+shadow-ai = "shadow_ai.app:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/shadow_ai"]
+
+[tool.ruff]
+line-length = 120

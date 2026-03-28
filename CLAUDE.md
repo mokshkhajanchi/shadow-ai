@@ -27,7 +27,7 @@ Single-file app (`bot.py`, ~850 lines) with these layers:
 
 - **Slack layer**: `slack-bolt` Socket Mode. Two event handlers: `app_mention` (first contact) and `message` (follow-ups in tracked threads, DMs). Both route to `handle_user_message()` → thread pool.
 - **Concurrency**: `ThreadPoolExecutor` (default 5 workers). Per-thread locks prevent duplicate processing of the same Slack thread. Each Claude session gets its own `asyncio` event loop on a dedicated thread that stays alive for follow-up queries.
-- **Session management**: Two tiers — in-memory `active_sessions` dict holds live `ClaudeSDKClient` instances; SQLite DB (`slack_claude_bot.db`) persists all messages. On restart, sessions are restored from DB by replaying conversation history into a new SDK client.
+- **Session management**: Two tiers — in-memory `active_sessions` dict holds live `ClaudeSDKClient` instances; SQLite DB (`shadow_ai.db`) persists all messages. On restart, sessions are restored from DB by replaying conversation history into a new SDK client.
 - **Claude Code integration**: Uses `claude-agent-sdk` (`ClaudeSDKClient` + `ClaudeAgentOptions`). Auto-discovers MCP servers from `~/.claude/settings.json` and project `.mcp.json`, adding wildcard tool approvals. Optional `knowledge.md` file is injected as `append_system_prompt`.
 - **Response handling**: `_collect_response()` streams all message types from the SDK, logs tool usage, and assembles text. Long responses are chunked at ~3900 chars. Every reply includes a "Stop Session" button.
 

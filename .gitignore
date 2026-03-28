@@ -1,16 +1,34 @@
+# Secrets
 .env
+
+# Python
 venv/
 .venv/
 __pycache__/
 *.pyc
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Database
 *.db
 *.db-wal
 *.db-shm
-thread_contexts.json
-.DS_Store
+
+# Logs
 bot.log
 bot.log.*
+
+# Generated at runtime
 .knowledge-index.md
-=1.0.0
 knowledge.md
+knowledge/learned/
+thread_contexts.json
+
+# IDE / OS
+.DS_Store
 .claude/
+
+# Legacy
+legacy/
