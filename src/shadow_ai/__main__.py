@@ -1,3 +1,3 @@
-from shadow_ai.app import main
+from shadow_ai.cli import main
 
 main()

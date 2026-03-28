@@ -89,8 +89,8 @@ def main():
     # 2. Setup logging (rotating file + console)
     setup_logging(config.log_file)
 
-    from shadow_ai import __version__
-    print(f"\n  shadow.ai v{__version__}\n")
+    from shadow_ai import __version__, __author__
+    print(f"\n  {config.bot_identity} v{__version__} | by {__author__}\n")
     logger.info(f"Starting shadow.ai v{__version__}...")
     logger.info(f"Max concurrent sessions: {config.max_concurrent}")
     logger.info(f"Request timeout: {config.request_timeout}s")

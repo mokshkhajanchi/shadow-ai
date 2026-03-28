@@ -181,6 +181,8 @@ def _process_message(
 
         # ── Build helpers that bind config/deps for command functions ──
         def _send_response(ch, ts, resp):
+            tagline = f"\n\n_sent by {config.bot_identity}_"
+            resp = resp.rstrip() + tagline
             send_response_with_stop_button(slack_client, ch, ts, resp)
 
         def _invoke(p, t, progress_ts=None, file_blocks=None, model=None, thinking_override=None):

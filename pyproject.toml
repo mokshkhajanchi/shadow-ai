@@ -9,6 +9,8 @@ description = "shadow.ai — Your AI co-worker that handles everyday tasks via S
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
+authors = [{name = "Moksh Khajanchi", email = "mokshkhajanchi@gofynd.com"}]
+keywords = ["slack", "claude", "ai", "bot", "agent", "claude-code"]
 dependencies = [
     "slack-bolt>=1.18.0",
     "slack-sdk>=3.27.0",
@@ -22,7 +24,7 @@ dependencies = [
 dev = ["pytest>=7.0", "pytest-asyncio", "pytest-cov", "ruff"]
 
 [project.scripts]
-shadow-ai = "shadow_ai.app:main"
+shadow-ai = "shadow_ai.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/shadow_ai"]

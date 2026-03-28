@@ -98,10 +98,18 @@ def _get_file_description(filepath: Path) -> str:
 class BotConfig:
     """All bot configuration, parsed from environment variables."""
 
+    # Identity
+    bot_username: str = ""  # e.g. "moksh" → "moksh.shadow.ai"
+
     # Slack
     slack_bot_token: str = ""
     slack_app_token: str = ""
     allowed_user_ids: list[str] = field(default_factory=list)
+
+    @property
+    def bot_identity(self) -> str:
+        """Full bot identity string, e.g. 'moksh.shadow.ai'."""
+        return f"{self.bot_username}.shadow.ai" if self.bot_username else "shadow.ai"
 
     # Claude
     claude_work_dir: str = ""
@@ -185,6 +193,7 @@ class BotConfig:
             repo_test_config = {}
 
         return cls(
+            bot_username=os.environ.get("BOT_USERNAME", ""),
             slack_bot_token=os.environ["SLACK_BOT_TOKEN"],
             slack_app_token=os.environ["SLACK_APP_TOKEN"],
             allowed_user_ids=allowed_user_ids,
