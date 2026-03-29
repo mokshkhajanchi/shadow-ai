@@ -95,6 +95,9 @@ def main():
     logger.info(f"Max concurrent sessions: {config.max_concurrent}")
     logger.info(f"Request timeout: {config.request_timeout}s")
 
+    # Auto-create knowledge/learned/ for self-learning knowledge base
+    Path("knowledge/learned").mkdir(parents=True, exist_ok=True)
+
     # 3. Create Slack Bolt App and WebClient
     app = App(token=config.slack_bot_token)
     slack_client = WebClient(token=config.slack_bot_token)

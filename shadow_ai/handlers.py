@@ -485,6 +485,42 @@ def _process_message(
         # Send response + Stop button
         _send_response(channel, thread_ts, response)
 
+        # Auto-learn: extract knowledge in background after every exchange
+        try:
+            messages = db_get_thread_messages(db_path, thread_ts, limit=50)
+            if len(messages) >= 2:  # At least 1 user + 1 assistant message
+                import threading as _thr
+                from shadow_ai.knowledge import save_learned_knowledge, rebuild_knowledge_index
+
+                def _auto_learn():
+                    try:
+                        convo = "\n\n".join(
+                            f"{'User' if m['role'] == 'user' else 'Assistant'}: {m['content']}"
+                            for m in messages[-10:]  # Last 10 messages
+                        )
+                        extract_prompt = (
+                            "Extract 3-5 key insights from this conversation. "
+                            "Be specific — include file paths, decisions, patterns. "
+                            "Format as bullet points. One-line topic at the end after '## Topic'.\n\n"
+                            f"--- CONVERSATION ---\n{convo[:6000]}\n--- END ---"
+                        )
+                        resp, _ = _invoke(extract_prompt, f"autolearn-{thread_ts}", model="haiku")
+                        topic = "conversation"
+                        if "## Topic" in resp:
+                            topic = resp.split("## Topic")[-1].strip().split("\n")[0].strip() or topic
+                        save_learned_knowledge(resp, topic, thread_ts)
+                        rebuild_knowledge_index(
+                            config.knowledge_paths, config.claude_work_dir,
+                            gitnexus_available=config.gitnexus_available,
+                        )
+                        logger.info(f"[AUTO-LEARN] Saved knowledge from thread {thread_ts}: {topic}")
+                    except Exception as learn_err:
+                        logger.warning(f"[AUTO-LEARN] Failed: {learn_err}")
+
+                _thr.Thread(target=_auto_learn, daemon=True).start()
+        except Exception:
+            pass  # Auto-learn is best-effort, never block the response
+
     except Exception as e:
         tb = traceback.format_exc()
         logger.error(f"[HANDLER ERROR] thread={thread_ts}: {type(e).__name__}: {e}\n{tb}")

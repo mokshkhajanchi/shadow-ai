@@ -113,11 +113,11 @@ class BotConfig:
 
     # Claude
     claude_work_dir: str = ""
-    max_turns: int = 30
+    max_turns: int = 50
     allowed_tools: list[str] = field(default_factory=lambda: [
         "Read", "Write", "Edit", "Bash", "Glob", "Grep", "Agent",
     ])
-    permission_mode: str = "acceptEdits"
+    permission_mode: str = "bypassPermissions"
     claude_model: str | None = None
     claude_thinking: str = "off"       # off | adaptive | enabled
     claude_thinking_budget: int = 10000
@@ -127,7 +127,7 @@ class BotConfig:
     log_file: str = "./bot.log"
 
     # Timeouts / limits
-    request_timeout: int = 600   # seconds
+    request_timeout: int = 3600   # 1 hour — supports long-running tasks
     max_concurrent: int = 5
 
     # Knowledge base
@@ -137,7 +137,7 @@ class BotConfig:
     knowledge_index_max_entries: int = 100
 
     # Budget
-    daily_budget_usd: float = 0.0  # 0 = unlimited
+    daily_budget_usd: float = 500.0  # USD per day
 
     # GitNexus
     gitnexus_enabled: str = "auto"  # auto | on | off

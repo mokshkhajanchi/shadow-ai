@@ -27,7 +27,7 @@ dev = ["pytest>=7.0", "pytest-asyncio", "pytest-cov", "ruff"]
 shadow-ai = "shadow_ai.cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/shadow_ai"]
+packages = ["shadow_ai"]
 
 [tool.ruff]
 line-length = 120
