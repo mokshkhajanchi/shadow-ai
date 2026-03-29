@@ -183,7 +183,7 @@ def create_options(
 
     # Load feedback lessons if they exist
     feedback_lessons = ""
-    feedback_path = os.path.join(cwd, "knowledge", "learned", "feedback_lessons.md")
+    feedback_path = os.path.join(cwd, "knowledge", "notes", "feedback_lessons.md")
     if os.path.isfile(feedback_path):
         try:
             with open(feedback_path) as f:

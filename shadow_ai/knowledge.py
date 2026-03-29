@@ -276,7 +276,7 @@ def rebuild_knowledge_index(knowledge_paths, cwd, inline_threshold=10_000, total
 
 # ─── Self-Learning Knowledge ─────────────────────────────────────────────────
 
-def save_learned_knowledge(content: str, topic: str, thread_ts: str, learned_dir: str = "knowledge/learned") -> str:
+def save_learned_knowledge(content: str, topic: str, thread_ts: str, learned_dir: str = "knowledge/notes") -> str:
     """Save learned knowledge from a conversation to a markdown file.
 
     Returns the path of the saved file.
@@ -310,7 +310,33 @@ def save_learned_knowledge(content: str, topic: str, thread_ts: str, learned_dir
     return filepath
 
 
-def save_feedback_lessons(content: str, learned_dir: str = "knowledge/learned") -> str:
+def save_conversation(content: str, topic: str, thread_ts: str, convo_dir: str = "knowledge/conversations") -> str:
+    """Save a raw conversation to the conversations folder.
+
+    Uses thread_ts as filename key — same thread overwrites its file.
+    Returns the path of the saved file.
+    """
+    from datetime import datetime
+
+    os.makedirs(convo_dir, exist_ok=True)
+
+    # Use thread_ts as unique key — one file per thread, overwritten as conversation grows
+    safe_ts = thread_ts.replace(".", "-")
+    filename = f"{safe_ts}.md"
+    filepath = os.path.join(convo_dir, filename)
+
+    date_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    with open(filepath, "w") as f:
+        f.write(f"# Conversation: {topic}\n")
+        f.write(f"Updated: {date_str}\n")
+        f.write(f"Source: Slack thread {thread_ts}\n\n")
+        f.write(content)
+
+    return filepath
+
+
+def save_feedback_lessons(content: str, learned_dir: str = "knowledge/notes") -> str:
     """Save distilled feedback lessons to a persistent file.
 
     Overwrites the previous feedback_lessons.md — it's regenerated each time.

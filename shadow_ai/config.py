@@ -166,7 +166,7 @@ class BotConfig:
         knowledge_raw = os.environ.get("KNOWLEDGE_PATHS", "")
         knowledge_paths = [p.strip() for p in knowledge_raw.split(",") if p.strip()]
 
-        # Auto-include knowledge/learned/ directory for self-learning knowledge base
+        # Auto-include knowledge/notes/ directory for curated knowledge
         learned_dir = os.path.join(os.getcwd(), "knowledge", "learned")
         if os.path.isdir(learned_dir) and learned_dir not in knowledge_paths:
             knowledge_paths.append(learned_dir)

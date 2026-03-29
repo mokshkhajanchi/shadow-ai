@@ -195,13 +195,19 @@ def db_save_message(db_path: str, thread_ts: str, role: str, content: str, user_
             conn.commit()
 
 
-def db_get_thread_messages(db_path: str, thread_ts: str) -> list[dict]:
+def db_get_thread_messages(db_path: str, thread_ts: str, limit: int = 0) -> list[dict]:
     with _db_lock:
         with _db_conn(db_path) as conn:
-            rows = conn.execute(
-                "SELECT role, user_id, content, created_at FROM messages WHERE thread_ts = ? ORDER BY id ASC",
-                (thread_ts,),
-            ).fetchall()
+            if limit > 0:
+                rows = conn.execute(
+                    "SELECT role, user_id, content, created_at FROM messages WHERE thread_ts = ? ORDER BY id ASC LIMIT ?",
+                    (thread_ts, limit),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT role, user_id, content, created_at FROM messages WHERE thread_ts = ? ORDER BY id ASC",
+                    (thread_ts,),
+                ).fetchall()
     return [dict(r) for r in rows]
 
 

@@ -286,7 +286,7 @@ def _process_message(
             return
 
         # ── Learn command: extract knowledge from thread ──
-        if prompt_lower in ("learn", "remember this", "save this"):
+        if prompt_lower in ("learn", "remember this", "save this", "take note", "note this", "understand this", "remember"):
             from shadow_ai.knowledge import save_learned_knowledge
             slack_client.chat_postMessage(
                 channel=channel, thread_ts=thread_ts,
@@ -485,41 +485,36 @@ def _process_message(
         # Send response + Stop button
         _send_response(channel, thread_ts, response)
 
-        # Auto-learn: extract knowledge in background after every exchange
+        # Auto-save: save raw conversation to knowledge/conversations/ in background
         try:
             messages = db_get_thread_messages(db_path, thread_ts, limit=50)
             if len(messages) >= 2:  # At least 1 user + 1 assistant message
                 import threading as _thr
-                from shadow_ai.knowledge import save_learned_knowledge, rebuild_knowledge_index
+                from shadow_ai.knowledge import save_conversation
 
-                def _auto_learn():
+                def _auto_save():
                     try:
                         convo = "\n\n".join(
-                            f"{'User' if m['role'] == 'user' else 'Assistant'}: {m['content']}"
-                            for m in messages[-10:]  # Last 10 messages
+                            f"**{'User' if m['role'] == 'user' else 'Assistant'}**: {m['content']}"
+                            for m in messages[-10:]
                         )
-                        extract_prompt = (
-                            "Extract 3-5 key insights from this conversation. "
-                            "Be specific — include file paths, decisions, patterns. "
-                            "Format as bullet points. One-line topic at the end after '## Topic'.\n\n"
-                            f"--- CONVERSATION ---\n{convo[:6000]}\n--- END ---"
-                        )
-                        resp, _ = _invoke(extract_prompt, f"autolearn-{thread_ts}", model="haiku")
-                        topic = "conversation"
-                        if "## Topic" in resp:
-                            topic = resp.split("## Topic")[-1].strip().split("\n")[0].strip() or topic
-                        save_learned_knowledge(resp, topic, thread_ts)
-                        rebuild_knowledge_index(
-                            config.knowledge_paths, config.claude_work_dir,
-                            gitnexus_available=config.gitnexus_available,
-                        )
-                        logger.info(f"[AUTO-LEARN] Saved knowledge from thread {thread_ts}: {topic}")
-                    except Exception as learn_err:
-                        logger.warning(f"[AUTO-LEARN] Failed: {learn_err}")
 
-                _thr.Thread(target=_auto_learn, daemon=True).start()
+                        # Extract topic from the last assistant message (first line, max 50 chars)
+                        topic = "conversation"
+                        for m in reversed(messages):
+                            if m["role"] == "assistant" and m["content"].strip():
+                                first_line = m["content"].strip().split("\n")[0]
+                                topic = first_line.strip("*_#`- ").strip()[:50] or topic
+                                break
+
+                        save_conversation(convo, topic, thread_ts)
+                        logger.info(f"[AUTO-SAVE] Saved conversation from thread {thread_ts}: {topic}")
+                    except Exception as save_err:
+                        logger.warning(f"[AUTO-SAVE] Failed: {save_err}")
+
+                _thr.Thread(target=_auto_save, daemon=True).start()
         except Exception:
-            pass  # Auto-learn is best-effort, never block the response
+            pass  # Auto-save is best-effort, never block the response
 
     except Exception as e:
         tb = traceback.format_exc()

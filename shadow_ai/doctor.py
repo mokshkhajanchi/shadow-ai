@@ -63,14 +63,25 @@ def run_doctor():
         all_ok &= _check("  Required vars", False, "skipped (.env missing)",
                          "Run `shadow-ai init` first")
 
-    # 6. knowledge/ directory
-    knowledge_dir = Path("knowledge/learned")
+    # 6. Working directory
+    if env_exists:
+        work_dir = Path(os.environ.get("CLAUDE_WORK_DIR", "~/Projects")).expanduser()
+        ok = work_dir.exists()
+        all_ok &= _check("  Working directory", ok,
+                         str(work_dir) if ok else f"{work_dir} not found",
+                         f"mkdir -p {work_dir}")
+    else:
+        all_ok &= _check("  Working directory", False, "skipped (.env missing)",
+                         "Run `shadow-ai init` first")
+
+    # 7. Knowledge directory
+    knowledge_dir = Path("knowledge/notes")
     ok = knowledge_dir.exists()
     all_ok &= _check("knowledge/", ok,
                       "directory exists" if ok else "not found",
-                      "Run `shadow-ai init` or `mkdir -p knowledge/learned`")
+                      "Run `shadow-ai init` or `mkdir -p knowledge/notes`")
 
-    # 7. MCP servers
+    # 8. MCP servers
     mcp_count = 0
     settings_path = Path.home() / ".claude" / "settings.json"
     if settings_path.exists():

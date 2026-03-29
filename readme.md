@@ -41,7 +41,7 @@ Mention the bot in any Slack channel or DM:
 | `haiku: <message>` | Use Claude Haiku (fastest, cheapest) |
 | `think: <message>` | Extended reasoning mode |
 | `summarize` | Recap the thread |
-| `learn` | Extract knowledge from this conversation |
+| `learn` / `take note` | Save curated notes from this conversation |
 | `learn from feedback` | Analyze reactions and improve |
 | `review <PR-URL>` | Review an Azure DevOps PR |
 | `status` | Active sessions, cost, feedback stats |

@@ -203,8 +203,10 @@ def run_wizard():
 
     env_path.write_text("\n".join(lines))
 
-    # Auto-create knowledge directory
-    Path("knowledge/learned").mkdir(parents=True, exist_ok=True)
+    # Auto-create required directories
+    Path("knowledge/notes").mkdir(parents=True, exist_ok=True)
+    Path("knowledge/conversations").mkdir(parents=True, exist_ok=True)
+    Path("~/Projects").expanduser().mkdir(parents=True, exist_ok=True)
 
     print(f"  ┌─────────────────────────────────────────┐")
     print(f"  │  {bot_identity:<40s}│")

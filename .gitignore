@@ -23,7 +23,8 @@ bot.log.*
 # Generated at runtime
 .knowledge-index.md
 knowledge.md
-knowledge/learned/
+knowledge/notes/
+knowledge/conversations/
 thread_contexts.json
 
 # IDE / OS
