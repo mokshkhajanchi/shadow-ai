@@ -54,6 +54,41 @@ logger = logging.getLogger("slack-claude-code")
 
 # ─── Auth ────────────────────────────────────────────────────────────────────
 
+def _is_learn_intent(text: str) -> bool:
+    """Detect if user wants the bot to save/learn/remember something.
+
+    Uses keyword combination matching. Matches patterns like:
+    "learn this", "save what we discussed", "please remember",
+    "note this down", "take a note", etc.
+    """
+    t = text.strip().lower()
+
+    # Direct single-word commands
+    if t in ("learn", "remember"):
+        return True
+
+    # Special phrases
+    if "take note" in t or "take a note" in t:
+        return True
+
+    # Action + context word matching
+    action_words = {"learn", "remember", "save", "note", "store", "record", "memorize", "retain"}
+    context_words = {"this", "that", "conversation", "discussion", "above", "chat", "thread", "it", "what"}
+
+    words = set(t.split())
+    has_action = bool(words & action_words)
+    has_context = bool(words & context_words)
+
+    if has_action and has_context:
+        return True
+
+    # "learn from this" / "learn from conversation"
+    if has_action and "from" in words:
+        return True
+
+    return False
+
+
 def is_authorized(user_id: str, allowed_user_ids: list[str]) -> bool:
     """Check whether *user_id* is in the allow-list (empty list = everyone allowed)."""
     if not allowed_user_ids or allowed_user_ids == [""]:
@@ -285,55 +320,39 @@ def _process_message(
             )
             return
 
-        # ── Learn command: extract knowledge from thread ──
-        if prompt_lower in ("learn", "remember this", "save this", "take note", "note this", "understand this", "remember"):
+        # ── Learn command: save knowledge from thread ──
+        if _is_learn_intent(prompt_lower):
             from shadow_ai.knowledge import save_learned_knowledge
             slack_client.chat_postMessage(
                 channel=channel, thread_ts=thread_ts,
-                text=":brain: Learning from this conversation...",
+                text=":brain: Saving notes from this conversation...",
             )
             messages = db_get_thread_messages(db_path, thread_ts, limit=50)
             if not messages:
                 slack_client.chat_postMessage(
                     channel=channel, thread_ts=thread_ts,
-                    text=":x: No conversation history found to learn from.",
+                    text=":x: No conversation history found.",
                 )
                 return
 
-            # Build conversation text
+            # Build conversation text (all messages)
             convo_parts = []
             for msg in messages:
                 role = "User" if msg["role"] == "user" else "Assistant"
-                convo_parts.append(f"{role}: {msg['content']}")
+                convo_parts.append(f"**{role}**: {msg['content']}")
             convo_text = "\n\n".join(convo_parts)
 
-            # Use Claude to extract insights
-            extract_prompt = (
-                "Extract key insights from this conversation for future reference. "
-                "Be specific — include file paths, function names, architectural decisions, and WHY they were made. "
-                "Format as:\n\n"
-                "## Key Insights\n- ...\n\n"
-                "## Decisions Made\n- ...\n\n"
-                "## Patterns / Rules\n- ...\n\n"
-                "## Topic\n<one-line topic summary>\n\n"
-                f"--- CONVERSATION ---\n{convo_text[:8000]}\n--- END ---"
-            )
-            response, cost_info = _invoke(
-                extract_prompt, thread_ts, model="haiku",
-            )
-            if cost_info:
-                db_save_usage(db_path, thread_ts, cost_info)
-
-            # Extract topic from response
+            # Topic from first user message (simple, no API call)
             topic = "conversation"
-            if "## Topic" in response:
-                topic_line = response.split("## Topic")[-1].strip().split("\n")[0].strip()
-                if topic_line:
-                    topic = topic_line
+            for msg in messages:
+                if msg["role"] == "user" and msg["content"].strip():
+                    first_line = msg["content"].strip().split("\n")[0]
+                    topic = first_line.strip("*_#`- ").strip()[:50] or topic
+                    break
 
-            filepath = save_learned_knowledge(response, topic, thread_ts)
+            filepath = save_learned_knowledge(convo_text, topic, thread_ts)
 
-            # Rebuild knowledge index in background (takes ~10s, don't block the user)
+            # Rebuild knowledge index in background
             import threading
             from shadow_ai.knowledge import rebuild_knowledge_index
             threading.Thread(
@@ -351,7 +370,7 @@ def _process_message(
 
             slack_client.chat_postMessage(
                 channel=channel, thread_ts=thread_ts,
-                text=f":white_check_mark: Learned and saved to `{filepath}`. Knowledge index rebuilding in background.",
+                text=f":white_check_mark: Saved to `{filepath}`. Knowledge index rebuilding.",
             )
             return
 
@@ -496,7 +515,7 @@ def _process_message(
                     try:
                         convo = "\n\n".join(
                             f"**{'User' if m['role'] == 'user' else 'Assistant'}**: {m['content']}"
-                            for m in messages[-10:]
+                            for m in messages
                         )
 
                         # Extract topic from the last assistant message (first line, max 50 chars)

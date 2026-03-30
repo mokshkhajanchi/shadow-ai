@@ -206,6 +206,38 @@ def create_options(
             + "\n--- END FEEDBACK LESSONS ---\n"
         )
 
+    # Inline recent notes from knowledge/notes/ into system prompt
+    notes_dir = os.path.join(cwd, "knowledge", "notes")
+    if os.path.isdir(notes_dir):
+        note_parts = []
+        total_size = 0
+        max_notes_size = 15_000  # 15KB budget
+
+        note_files = sorted(
+            Path(notes_dir).glob("*.md"),
+            key=lambda f: f.stat().st_mtime,
+            reverse=True,
+        )
+        for nf in note_files:
+            if nf.name == "feedback_lessons.md":
+                continue
+            try:
+                content = nf.read_text(encoding="utf-8", errors="ignore").strip()
+                if total_size + len(content) > max_notes_size:
+                    break
+                note_parts.append(f"### {nf.name}\n{content}")
+                total_size += len(content)
+            except Exception:
+                continue
+
+        if note_parts:
+            append_text += (
+                "\n\n--- NOTES FROM PREVIOUS SESSIONS ---\n"
+                "These are notes saved from earlier conversations. Use them as context.\n\n"
+                + "\n\n".join(note_parts)
+                + "\n--- END NOTES ---\n"
+            )
+
     opts.system_prompt = {
         "type": "preset",
         "preset": "claude_code",
