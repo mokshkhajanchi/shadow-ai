@@ -32,11 +32,26 @@ shadow-ai                    # Start the bot
 
 The wizard walks you through creating a Slack app, getting tokens, and setting access control. Takes ~3 minutes.
 
-**Updating to a new version:**
+---
+
+## Updates & Releases
+
+The `main` branch is for active development. Always install from a **tagged release** (e.g. `v1.0.0`).
+
+**Check available versions:**
 ```bash
-git fetch --tags && git checkout v<new-version>
-pip install -e .
+git fetch --tags && git tag
 ```
+
+**Update to a new version:**
+```bash
+git fetch --tags
+git checkout v<new-version>
+pip install -e .
+shadow-ai doctor   # Verify everything still works
+```
+
+Your `.env`, `knowledge/`, and local data are untouched during updates.
 
 ---
 
