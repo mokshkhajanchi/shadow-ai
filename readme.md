@@ -20,16 +20,23 @@ Created by Moksh Khajanchi
 ## Setup
 
 ```bash
-git clone <repo-url> && cd shadow-ai
+git clone https://github.com/mokshkhajanchi/shadow-ai.git && cd shadow-ai
+git checkout v1.0.0          # Use the latest stable release
 python3.11 -m venv .venv
 source .venv/bin/activate
 pip install -e .
-shadow-ai doctor   # Check prerequisites
-shadow-ai init     # 3-step setup wizard (creates .env)
-shadow-ai          # Start the bot
+shadow-ai doctor             # Check prerequisites
+shadow-ai init               # 3-step setup wizard (creates .env)
+shadow-ai                    # Start the bot
 ```
 
 The wizard walks you through creating a Slack app, getting tokens, and setting access control. Takes ~3 minutes.
+
+**Updating to a new version:**
+```bash
+git fetch --tags && git checkout v<new-version>
+pip install -e .
+```
 
 ---
 
