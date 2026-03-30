@@ -197,8 +197,8 @@ class BotConfig:
             slack_bot_token=os.environ["SLACK_BOT_TOKEN"],
             slack_app_token=os.environ["SLACK_APP_TOKEN"],
             allowed_user_ids=allowed_user_ids,
-            claude_work_dir=os.environ.get(
-                "CLAUDE_WORK_DIR", os.path.expanduser("~/Projects"),
+            claude_work_dir=os.path.expanduser(
+                os.environ.get("CLAUDE_WORK_DIR", "~/Projects"),
             ),
             max_turns=int(os.environ.get("CLAUDE_MAX_TURNS", "30")),
             allowed_tools=allowed_tools,
