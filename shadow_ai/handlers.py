@@ -327,7 +327,7 @@ def _process_message(
                 channel=channel, thread_ts=thread_ts,
                 text=":brain: Saving notes from this conversation...",
             )
-            messages = db_get_thread_messages(db_path, thread_ts, limit=50)
+            messages = db_get_thread_messages(db_path, thread_ts, limit=100)
             if not messages:
                 slack_client.chat_postMessage(
                     channel=channel, thread_ts=thread_ts,
@@ -506,7 +506,7 @@ def _process_message(
 
         # Auto-save: save raw conversation to knowledge/conversations/ in background
         try:
-            messages = db_get_thread_messages(db_path, thread_ts, limit=50)
+            messages = db_get_thread_messages(db_path, thread_ts, limit=100)
             if len(messages) >= 2:  # At least 1 user + 1 assistant message
                 import threading as _thr
                 from shadow_ai.knowledge import save_conversation

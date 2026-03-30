@@ -103,6 +103,19 @@ Restart the bot — `shadow-ai doctor` will show the server count. The more tool
 
 ---
 
+## Knowledge Base
+
+The bot learns and remembers across conversations:
+
+- **Auto-save** — every conversation is saved to `knowledge/conversations/` automatically
+- **Notes** — say `learn`, `save this`, `remember this`, `take note` (or similar) in any thread to save curated notes to `knowledge/notes/`
+- **Feedback** — react with 👎 to responses, then say `learn from feedback` to generate improvement rules
+- **Proactive** — saved notes are injected into every new session so the bot remembers context without being asked
+
+Notes are markdown files — human-readable and editable. The bot gets smarter the more you use it.
+
+---
+
 ## Security Note
 
 **Only add your own Slack user ID to `ALLOWED_USER_IDS`.** The bot runs on your local machine with full filesystem access — anyone allowed to use it can read, modify, or delete files, run shell commands, and access any MCP tool you've connected. Treat bot access like SSH access to your machine.

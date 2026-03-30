@@ -22,10 +22,10 @@ logger = logging.getLogger("slack-claude-code")
 # Callbacks and config set via init_sessions() — avoids circular import and db_path coupling
 _db_stop_thread_fn = None
 _remove_thread_lock_fn = None
-_max_active_sessions = 3
+_max_active_sessions = 5
 
 
-def init_sessions(db_stop_thread_fn=None, remove_thread_lock_fn=None, max_active_sessions=3):
+def init_sessions(db_stop_thread_fn=None, remove_thread_lock_fn=None, max_active_sessions=5):
     """Initialize the sessions module with required callbacks and config."""
     global _db_stop_thread_fn, _remove_thread_lock_fn, _max_active_sessions
     _db_stop_thread_fn = db_stop_thread_fn

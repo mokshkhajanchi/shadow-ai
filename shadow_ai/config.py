@@ -151,7 +151,7 @@ class BotConfig:
 
     # Session management
     session_idle_timeout: int = 0          # 0 = disabled (no idle eviction)
-    max_active_sessions: int = 3
+    max_active_sessions: int = 5
 
     # NEW configurable fields
     system_prompt_file: str = ""           # path to custom system prompt .md file
@@ -220,7 +220,7 @@ class BotConfig:
             codebase_index_max_size=int(os.environ.get("CODEBASE_INDEX_MAX_SIZE", "50000")),
             verbose_progress=os.environ.get("VERBOSE_PROGRESS", "").lower() in ("1", "true", "yes"),
             session_idle_timeout=int(os.environ.get("SESSION_IDLE_TIMEOUT", "0")),
-            max_active_sessions=int(os.environ.get("MAX_ACTIVE_SESSIONS", "3")),
+            max_active_sessions=int(os.environ.get("MAX_ACTIVE_SESSIONS", "5")),
             system_prompt_file=os.environ.get("SYSTEM_PROMPT_FILE", ""),
             repo_paths=repo_paths,
             repo_test_config=repo_test_config,
