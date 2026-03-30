@@ -11,6 +11,7 @@ Created by Moksh Khajanchi
 ## Prerequisites
 
 - **Python 3.11+** — `python3 --version`
+- **Node.js 18+** — `node --version` (needed for Claude Code CLI)
 - **Claude Code CLI** — `npm install -g @anthropic-ai/claude-code`
 - **A Slack workspace** where you can create apps
 

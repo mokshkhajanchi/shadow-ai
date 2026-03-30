@@ -33,23 +33,33 @@ def run_doctor():
     all_ok &= _check("Python 3.11+", ok, f"{v.major}.{v.minor}.{v.micro}",
                       "Install Python 3.11+ via pyenv, brew, or deadsnakes")
 
-    # 2. Claude Code CLI
+    # 2. Node.js
+    node_path = shutil.which("node")
+    if node_path:
+        import subprocess
+        node_ver = subprocess.run(["node", "--version"], capture_output=True, text=True).stdout.strip()
+        all_ok &= _check("Node.js 18+", True, node_ver)
+    else:
+        all_ok &= _check("Node.js 18+", False, "not found",
+                         "Install from https://nodejs.org or via brew/nvm")
+
+    # 3. Claude Code CLI
     claude_path = shutil.which("claude")
     ok = claude_path is not None
     all_ok &= _check("Claude Code CLI", ok,
                       f"found at {claude_path}" if ok else "not found",
                       "npm install -g @anthropic-ai/claude-code")
 
-    # 3. Package installed
+    # 4. Package installed
     all_ok &= _check("shadow-ai package", True, f"v{__version__}")
 
-    # 4. .env file
+    # 5. .env file
     env_exists = Path(".env").exists()
     all_ok &= _check(".env configuration", env_exists,
                       "found" if env_exists else "not found",
                       "Run `shadow-ai init` to create it")
 
-    # 5. Required env vars (only check if .env exists)
+    # 6. Required env vars (only check if .env exists)
     if env_exists:
         from dotenv import load_dotenv
         load_dotenv()
@@ -63,7 +73,7 @@ def run_doctor():
         all_ok &= _check("  Required vars", False, "skipped (.env missing)",
                          "Run `shadow-ai init` first")
 
-    # 6. Working directory
+    # 7. Working directory
     if env_exists:
         work_dir = Path(os.environ.get("CLAUDE_WORK_DIR", "~/Projects")).expanduser()
         ok = work_dir.exists()
@@ -74,14 +84,14 @@ def run_doctor():
         all_ok &= _check("  Working directory", False, "skipped (.env missing)",
                          "Run `shadow-ai init` first")
 
-    # 7. Knowledge directory
+    # 8. Knowledge directory
     knowledge_dir = Path("knowledge/notes")
     ok = knowledge_dir.exists()
     all_ok &= _check("knowledge/", ok,
                       "directory exists" if ok else "not found",
                       "Run `shadow-ai init` or `mkdir -p knowledge/notes`")
 
-    # 8. MCP servers
+    # 9. MCP servers
     mcp_count = 0
     settings_path = Path.home() / ".claude" / "settings.json"
     if settings_path.exists():
