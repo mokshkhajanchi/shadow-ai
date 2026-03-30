@@ -102,6 +102,12 @@ Restart the bot — `shadow-ai doctor` will show the server count. The more tool
 
 ---
 
+## Security Note
+
+**Only add your own Slack user ID to `ALLOWED_USER_IDS`.** The bot runs on your local machine with full filesystem access — anyone allowed to use it can read, modify, or delete files, run shell commands, and access any MCP tool you've connected. Treat bot access like SSH access to your machine.
+
+---
+
 ## Troubleshooting
 
 Run `shadow-ai doctor` to diagnose issues.
