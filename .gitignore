@@ -25,6 +25,7 @@ bot.log.*
 knowledge.md
 knowledge/notes/
 knowledge/conversations/
+knowledge/system_prompt.md
 thread_contexts.json
 
 # IDE / OS
