@@ -20,6 +20,8 @@ Created by Moksh Khajanchi
 
 ```bash
 git clone <repo-url> && cd shadow-ai
+python3.11 -m venv .venv
+source .venv/bin/activate
 pip install -e .
 shadow-ai doctor   # Check prerequisites
 shadow-ai init     # 3-step setup wizard (creates .env)
@@ -67,9 +69,36 @@ See `.env.example` for the full list.
 
 ---
 
-## MCP Servers
+## MCP Servers (Recommended)
 
-The bot auto-discovers MCP servers from `~/.claude/settings.json`. Any MCP server you configure in Claude Code (Jira, Azure DevOps, Sentry, Grafana, GitHub, etc.) is automatically available to the bot.
+MCP servers are what make the bot truly powerful. The bot **auto-discovers** any MCP server configured in `~/.claude/settings.json` — no extra setup needed.
+
+Connect your tools to give the bot direct access:
+
+| Server | What it unlocks |
+|---|---|
+| **Jira** | Create/update tickets, search issues, manage sprints |
+| **Azure DevOps** | Review PRs, manage work items, search repos |
+| **Sentry** | Investigate errors, list issues, analyze traces |
+| **Grafana** | Query dashboards, check alerts, run Prometheus queries |
+| **GitHub** | Manage repos, PRs, issues |
+| **Slack** | Send messages, search channels, create threads |
+
+Add a server to `~/.claude/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "jira": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@anthropic-ai/claude-code-jira-mcp", "--token", "YOUR_TOKEN"]
+    }
+  }
+}
+```
+
+Restart the bot — `shadow-ai doctor` will show the server count. The more tools you connect, the more useful the bot becomes.
 
 ---
 
