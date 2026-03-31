@@ -204,8 +204,6 @@ def create_options(
             reverse=True,
         )
         for nf in note_files:
-            if nf.name == "feedback_lessons.md":
-                continue
             total_notes += 1
             try:
                 content = nf.read_text(encoding="utf-8", errors="ignore").strip()
@@ -247,6 +245,9 @@ def create_options(
                 + "\n\n".join(note_parts)
                 + "\n--- END NOTES ---\n"
             )
+
+    logger.info(f"[SYSTEM PROMPT] Total length: {len(append_text)} chars")
+    logger.debug(f"[SYSTEM PROMPT] Full content:\n{'=' * 80}\n{append_text}\n{'=' * 80}")
 
     opts.system_prompt = {
         "type": "preset",
