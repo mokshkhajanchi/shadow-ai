@@ -99,6 +99,13 @@ def main():
     Path("knowledge/notes").mkdir(parents=True, exist_ok=True)
     Path("knowledge/conversations").mkdir(parents=True, exist_ok=True)
 
+    # Install bundled + custom skills into ~/.claude/skills/
+    from shadow_ai.skill_loader import install_skills
+    bundled_skills = Path(__file__).parent / "skills"
+    custom_skills = Path("knowledge") / "skills"
+    skill_count = install_skills(bundled_skills, custom_skills)
+    logger.info(f"Skills installed: {skill_count}")
+
     # 3. Create Slack Bolt App and WebClient
     app = App(token=config.slack_bot_token)
     slack_client = WebClient(token=config.slack_bot_token)

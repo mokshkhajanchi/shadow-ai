@@ -45,6 +45,9 @@ def build_base_system_prompt(
         "- AGENTS: You have specialized agents available via the Agent tool. "
         "Use 'code-reviewer' for PR reviews, 'debugger' for tracing errors, "
         "'note-taker' for extracting knowledge. Prefer these over doing everything inline.\n"
+        "- SKILLS: You have skills available via the Skill tool. "
+        "Use 'brainstorm' before implementing features, 'tdd' for test-driven development, "
+        "'pr-review' for reviewing PRs, 'summarize' for recaps. Invoke skills when they match the task.\n"
         "--- END RESPONSE GUIDELINES ---\n"
     ]
 

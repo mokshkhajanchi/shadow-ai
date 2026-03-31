@@ -159,6 +159,31 @@ Restart the bot — it auto-discovers new agents. No code changes needed.
 
 ---
 
+## Skills
+
+The bot ships with workflow skills that Claude invokes automatically:
+
+| Skill | When it's used |
+|---|---|
+| **brainstorm** | Before implementing — explores requirements, approaches, edge cases |
+| **tdd** | Test-driven development — write tests first, then implement |
+| **pr-review** | Structured PR review — severity-tagged feedback |
+| **summarize** | Thread/conversation recaps — decisions, actions, next steps |
+
+Skills are installed to `~/.claude/skills/` at startup so they work with the bot and direct Claude Code usage.
+
+### Creating Custom Skills
+
+Create a directory in `knowledge/skills/` with a `SKILL.md`:
+
+```
+knowledge/skills/my-skill/SKILL.md
+```
+
+Format: YAML frontmatter (name, description) + markdown instructions. Restart the bot to install.
+
+---
+
 ## Knowledge Base
 
 The bot learns and remembers across conversations:
