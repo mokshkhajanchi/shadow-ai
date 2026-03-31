@@ -240,9 +240,12 @@ def register_events(
     @app.event("reaction_added")
     def _handle_reaction_added(event, logger):
         reaction = event.get("reaction", "")
-        logger.debug(f"[REACTION] Received: {reaction} from {event.get('user')} on {event.get('item', {}).get('ts')}")
-        if reaction not in FEEDBACK_REACTIONS:
+        # Strip skin-tone suffixes (e.g. "+1::skin-tone-2" → "+1")
+        base_reaction = reaction.split("::")[0]
+        logger.info(f"[REACTION] Received: {reaction} from {event.get('user')} on {event.get('item', {}).get('ts')}")
+        if base_reaction not in FEEDBACK_REACTIONS:
             return
+        reaction = base_reaction
         item_user = event.get("item_user")
         if item_user != bot_user_id:
             return
