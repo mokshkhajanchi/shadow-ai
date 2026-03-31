@@ -45,9 +45,8 @@ def build_base_system_prompt(
         "- AGENTS: You have specialized agents available via the Agent tool. "
         "Use 'code-reviewer' for PR reviews, 'debugger' for tracing errors, "
         "'note-taker' for extracting knowledge. Prefer these over doing everything inline.\n"
-        "- SKILLS: You have skills available via the Skill tool. "
-        "Use 'brainstorm' before implementing features, 'tdd' for test-driven development, "
-        "'pr-review' for reviewing PRs, 'summarize' for recaps. Invoke skills when they match the task.\n"
+        "- SKILLS: You have skills loaded into your system prompt. "
+        "When a task matches a skill, follow its instructions precisely.\n"
         "--- END RESPONSE GUIDELINES ---\n"
     ]
 
@@ -140,6 +139,7 @@ def create_options(
     """
     from claude_agent_sdk import ClaudeAgentOptions
     from shadow_ai.agent_loader import load_agents
+    from shadow_ai.skill_loader import load_skills, build_skills_prompt
 
     allowed_tools = list(getattr(config, "allowed_tools", ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "Agent"]))
     permission_mode = getattr(config, "permission_mode", "acceptEdits")
@@ -173,6 +173,11 @@ def create_options(
     if agents:
         opts.agents = agents
 
+    # Load bundled + custom skills
+    bundled_skills_dir = Path(__file__).parent / "skills"
+    custom_skills_dir = Path(cwd) / "knowledge" / "skills"
+    loaded_skills = load_skills(bundled_skills_dir, custom_skills_dir)
+
     # Model selection: inline override > env var > SDK default
     effective_model = model or default_model
     if effective_model:
@@ -196,6 +201,13 @@ def create_options(
     custom_prompt = build_custom_prompt(system_prompt_file)
 
     append_text = base_prompt
+
+    # Inject skills into system prompt
+    if loaded_skills:
+        skills_prompt = build_skills_prompt(loaded_skills)
+        append_text += skills_prompt
+        logger.info(f"[SKILLS] Injected {len(loaded_skills)} skills into system prompt ({len(skills_prompt)} chars)")
+
     if custom_prompt:
         append_text += (
             "\n\n--- CUSTOM INSTRUCTIONS ---\n"

@@ -1,25 +1,47 @@
-"""Install bundled and custom skills into Claude Code's skill discovery path."""
+"""Load and manage skills for shadow-ai Claude Code sessions."""
 
 import logging
-import shutil
+import re
 from pathlib import Path
 
 logger = logging.getLogger("slack-claude-code")
 
-CLAUDE_SKILLS_DIR = Path.home() / ".claude" / "skills"
+
+def _parse_skill_md(filepath: Path) -> dict | None:
+    """Parse a SKILL.md file with YAML frontmatter + markdown body."""
+    try:
+        text = filepath.read_text(encoding="utf-8")
+    except Exception:
+        return None
+
+    match = re.match(r"^---\s*\n(.*?)\n---\s*\n(.*)$", text, re.DOTALL)
+    if not match:
+        return None
+
+    frontmatter, body = match.group(1), match.group(2).strip()
+    meta = {}
+    for line in frontmatter.split("\n"):
+        if ":" in line and not line.startswith(" "):
+            key, val = line.split(":", 1)
+            meta[key.strip()] = val.strip().strip('"')
+
+    if "name" not in meta or "description" not in meta:
+        return None
+
+    return {
+        "name": meta["name"],
+        "description": meta["description"],
+        "content": body,
+    }
 
 
-def install_skills(*skill_dirs: str | Path) -> int:
-    """Symlink skill directories into ~/.claude/skills/ for Claude Code discovery.
+def load_skills(*skill_dirs: str | Path) -> dict[str, dict]:
+    """Load all skills from given directories.
 
-    Each subdirectory in the given skill_dirs that contains a SKILL.md is symlinked.
-    Existing symlinks are updated. Non-symlink conflicts are skipped.
-
-    Returns the number of skills installed.
+    Each directory should contain subdirectories with SKILL.md files.
+    Returns dict[name, {description, content}].
     """
-    CLAUDE_SKILLS_DIR.mkdir(parents=True, exist_ok=True)
-    installed = 0
-
+    skills = {}
     for source_dir in skill_dirs:
         source_path = Path(source_dir)
         if not source_path.is_dir():
@@ -32,29 +54,80 @@ def install_skills(*skill_dirs: str | Path) -> int:
             if not skill_file.exists():
                 continue
 
-            target = CLAUDE_SKILLS_DIR / skill_dir.name
+            parsed = _parse_skill_md(skill_file)
+            if not parsed:
+                logger.warning(f"[SKILLS] Skipped invalid skill: {skill_dir.name}")
+                continue
 
-            # Already correctly linked
+            skills[parsed["name"]] = {
+                "description": parsed["description"],
+                "content": parsed["content"],
+            }
+            logger.info(f"[SKILLS] Loaded: {parsed['name']}")
+
+    return skills
+
+
+def build_skills_prompt(skills: dict[str, dict]) -> str:
+    """Build a system prompt section documenting all available skills.
+
+    Includes the full skill content so Claude knows exactly how to use each one.
+    """
+    if not skills:
+        return ""
+
+    parts = [
+        "\n\n--- AVAILABLE SKILLS ---\n"
+        "You have the following skills. When a task matches a skill, follow its instructions.\n\n"
+    ]
+
+    for name, skill in skills.items():
+        parts.append(f"### Skill: {name}\n")
+        parts.append(f"**When to use:** {skill['description']}\n\n")
+        parts.append(skill["content"])
+        parts.append("\n\n")
+
+    parts.append("--- END SKILLS ---\n")
+    return "".join(parts)
+
+
+def install_skills_to_claude(*skill_dirs: str | Path) -> int:
+    """Symlink skill directories into ~/.claude/skills/ for native Claude Code discovery.
+
+    Returns the number of skills installed.
+    """
+    claude_skills_dir = Path.home() / ".claude" / "skills"
+    claude_skills_dir.mkdir(parents=True, exist_ok=True)
+    installed = 0
+
+    for source_dir in skill_dirs:
+        source_path = Path(source_dir)
+        if not source_path.is_dir():
+            continue
+
+        for skill_dir in sorted(source_path.iterdir()):
+            if not skill_dir.is_dir():
+                continue
+            if not (skill_dir / "SKILL.md").exists():
+                continue
+
+            target = claude_skills_dir / skill_dir.name
+
             if target.is_symlink() and target.resolve() == skill_dir.resolve():
                 installed += 1
                 continue
 
-            # Update stale symlink
             if target.is_symlink():
                 target.unlink()
                 target.symlink_to(skill_dir.resolve())
-                logger.info(f"[SKILLS] Updated: {skill_dir.name}")
                 installed += 1
                 continue
 
-            # Skip if a real directory exists (user's own skill with same name)
             if target.exists():
-                logger.warning(f"[SKILLS] Skipped {skill_dir.name} — already exists at {target}")
+                logger.warning(f"[SKILLS] Skipped symlink for {skill_dir.name} — already exists")
                 continue
 
-            # Create new symlink
             target.symlink_to(skill_dir.resolve())
-            logger.info(f"[SKILLS] Installed: {skill_dir.name}")
             installed += 1
 
     return installed
