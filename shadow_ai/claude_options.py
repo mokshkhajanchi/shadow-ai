@@ -206,12 +206,14 @@ def create_options(
             + "\n--- END FEEDBACK LESSONS ---\n"
         )
 
-    # Inline recent notes from knowledge/notes/ into system prompt
+    # Inline summarized notes from knowledge/notes/ into system prompt
     notes_dir = os.path.join(cwd, "knowledge", "notes")
     if os.path.isdir(notes_dir):
         note_parts = []
         total_size = 0
-        max_notes_size = 15_000  # 15KB budget
+        max_notes_size = 50_000  # 50KB hard limit for notes
+        total_notes = 0
+        skipped_notes = 0
 
         note_files = sorted(
             Path(notes_dir).glob("*.md"),
@@ -221,19 +223,44 @@ def create_options(
         for nf in note_files:
             if nf.name == "feedback_lessons.md":
                 continue
+            total_notes += 1
             try:
                 content = nf.read_text(encoding="utf-8", errors="ignore").strip()
-                if total_size + len(content) > max_notes_size:
-                    break
-                note_parts.append(f"### {nf.name}\n{content}")
-                total_size += len(content)
+                # Extract summary: header + source + first user msg + first assistant msg
+                lines = content.split("\n")
+                header = lines[0] if lines else nf.name
+                summary_parts = [header]
+                for line in lines[1:]:
+                    if line.startswith("Source:") or line.startswith("Updated:") or line.startswith("Date:"):
+                        summary_parts.append(line)
+                    elif line.startswith("**User**:"):
+                        summary_parts.append(line[:200])
+                        break
+                    elif line.startswith("**Assistant**:"):
+                        summary_parts.append(line[:200])
+                        break
+                summary = "\n".join(summary_parts)
+
+                if total_size + len(summary) > max_notes_size:
+                    skipped_notes += 1
+                    continue
+                note_parts.append(summary)
+                total_size += len(summary)
             except Exception:
                 continue
 
+        if skipped_notes > 0:
+            logger.warning(
+                f"[NOTES] {skipped_notes}/{total_notes} notes skipped — "
+                f"system prompt notes budget ({max_notes_size // 1000}KB) exceeded. "
+                f"Consider cleaning up old notes in knowledge/notes/"
+            )
+
         if note_parts:
+            logger.info(f"[NOTES] Injecting {len(note_parts)}/{total_notes} note summaries into system prompt ({total_size} chars)")
             append_text += (
                 "\n\n--- NOTES FROM PREVIOUS SESSIONS ---\n"
-                "These are notes saved from earlier conversations. Use them as context.\n\n"
+                "These are summaries of notes saved from earlier conversations. Use them as context.\n\n"
                 + "\n\n".join(note_parts)
                 + "\n--- END NOTES ---\n"
             )

@@ -273,6 +273,22 @@ def register_events(
         db_save_feedback(db_path, message_ts, thread_ts, channel, user_id, reaction, score)
         logger.info(f"[FEEDBACK] {reaction} ({score:+d}) on {message_ts} by {user_id}")
 
+        # Auto-regenerate feedback lessons on negative reactions
+        if score < 0:
+            import threading
+            from shadow_ai.knowledge import auto_regenerate_feedback_lessons
+            threading.Thread(
+                target=auto_regenerate_feedback_lessons,
+                args=(db_path, config, create_options_fn),
+                kwargs=dict(
+                    mcp_server_names=mcp_server_names,
+                    mcp_tool_catalog=mcp_tool_catalog,
+                    knowledge_index_file=knowledge_index_file,
+                    knowledge_dirs=knowledge_dirs,
+                ),
+                daemon=True,
+            ).start()
+
     # ── reaction_removed: feedback removal ───────────────────────────────
 
     @app.event("reaction_removed")

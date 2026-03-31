@@ -350,3 +350,67 @@ def save_feedback_lessons(content: str, learned_dir: str = "knowledge/notes") ->
         f.write(content)
 
     return filepath
+
+
+def auto_regenerate_feedback_lessons(db_path: str, config, create_options_fn, mcp_server_names=None,
+                                      mcp_tool_catalog="", knowledge_index_file="", knowledge_dirs=None):
+    """Auto-regenerate feedback_lessons.md using Claude to analyze negative feedback.
+
+    Called from the reaction_added event handler in a background thread.
+    Uses invoke_claude_code directly (not the _invoke closure).
+    """
+    from shadow_ai.db import db_get_feedback_messages, db_save_usage
+    from shadow_ai.claude_runner import invoke_claude_code
+    from shadow_ai.sessions import get_session, remove_session, touch_session, mark_session_processing, store_session
+    from shadow_ai.db import db_get_thread_messages, db_get_thread_channel
+
+    neg_messages = db_get_feedback_messages(db_path, score_filter=-1, limit=30)
+    if not neg_messages:
+        return
+
+    analysis_parts = []
+    for i, fm in enumerate(neg_messages, 1):
+        analysis_parts.append(
+            f"--- Case {i} ({fm['reaction']}) ---\n"
+            f"User asked: {fm['user_question']}\n"
+            f"Bot said: {fm['bot_response']}\n"
+        )
+    analysis_text = "\n".join(analysis_parts)
+
+    analyze_prompt = (
+        f"Analyze these {len(neg_messages)} negatively-rated bot responses. "
+        "Identify patterns of what went wrong. "
+        "Output a list of concrete rules the bot should follow to avoid these mistakes. "
+        "Format each rule as: '- DO NOT: <bad behavior>. INSTEAD: <correct behavior>.'\n\n"
+        f"{analysis_text[:8000]}"
+    )
+
+    thread_ts = f"feedback-auto-{int(__import__('time').time())}"
+    response, cost_info = invoke_claude_code(
+        analyze_prompt, thread_ts,
+        model="haiku",
+        config=config,
+        get_session_fn=get_session,
+        remove_session_fn=remove_session,
+        touch_session_fn=touch_session,
+        mark_session_processing_fn=mark_session_processing,
+        store_session_fn=store_session,
+        db_get_thread_messages_fn=lambda ts: db_get_thread_messages(db_path, ts),
+        db_get_thread_channel_fn=lambda ts: db_get_thread_channel(db_path, ts),
+        create_options_fn=create_options_fn,
+        mcp_server_names=mcp_server_names or [],
+        mcp_tool_catalog=mcp_tool_catalog,
+        knowledge_index_file=knowledge_index_file,
+        gitnexus_available=getattr(config, 'gitnexus_available', False),
+        knowledge_dirs=knowledge_dirs or [],
+    )
+
+    if response:
+        save_feedback_lessons(response)
+        logger.info(f"[AUTO-FEEDBACK] Regenerated feedback_lessons.md from {len(neg_messages)} negative reactions")
+
+    # Clean up the temp session
+    try:
+        remove_session(thread_ts)
+    except Exception:
+        pass
