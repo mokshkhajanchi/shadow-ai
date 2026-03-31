@@ -123,6 +123,7 @@ def create_options(
     knowledge_index_file: str = "",
     gitnexus_available: bool = False,
     knowledge_dirs: list[str] | None = None,
+    monitored: bool = False,
 ):
     """
     Build a ClaudeAgentOptions instance for a new or restored SDK session.
@@ -141,10 +142,15 @@ def create_options(
     from shadow_ai.agent_loader import load_agents
     from shadow_ai.skill_loader import load_skills, build_skills_prompt
 
-    allowed_tools = list(getattr(config, "allowed_tools", ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "Agent"]))
+    if monitored:
+        # Read-only tools for monitored channel auto-replies
+        allowed_tools = ["Read", "Glob", "Grep"]
+        max_turns = 5
+    else:
+        allowed_tools = list(getattr(config, "allowed_tools", ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "Agent"]))
+        max_turns = getattr(config, "max_turns", 30)
     permission_mode = getattr(config, "permission_mode", "acceptEdits")
     cwd = os.path.expanduser(getattr(config, "claude_work_dir", "~/Projects"))
-    max_turns = getattr(config, "max_turns", 30)
     default_model = getattr(config, "claude_model", None)
     default_thinking = getattr(config, "claude_thinking", "off")
     thinking_budget = getattr(config, "claude_thinking_budget", 10000)

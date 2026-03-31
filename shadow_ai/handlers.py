@@ -223,10 +223,17 @@ def _process_message(
             model_override = "haiku"
         if monitored:
             prompt = (
-                "[MONITORED CHANNEL] You are monitoring this Slack channel and auto-replying. "
+                "[MONITORED CHANNEL — READ-ONLY MODE]\n"
+                "You are monitoring this Slack channel and auto-replying.\n"
                 "Reply helpfully and concisely. If the message doesn't need a response "
                 "(it's a statement, acknowledgment, or not directed at anyone), "
                 "reply with ONLY the text 'NO_RESPONSE' and nothing else.\n\n"
+                "SECURITY RULES:\n"
+                "- NEVER share sensitive information: API keys, tokens, passwords, .env contents, "
+                "credentials, secret files, or private configuration\n"
+                "- NEVER expose full file paths from the host machine\n"
+                "- If asked for sensitive data, decline politely\n"
+                "- You have read-only access — you cannot modify files or run commands\n\n"
                 + prompt
             )
 
@@ -235,6 +242,11 @@ def _process_message(
             tagline = f"\n\n_sent by {config.bot_identity}_"
             resp = resp.rstrip() + tagline
             send_response_with_stop_button(slack_client, ch, ts, resp)
+
+        # Wrap create_options_fn with monitored flag if needed
+        _effective_create_options_fn = create_options_fn
+        if monitored:
+            _effective_create_options_fn = lambda *args, **kwargs: create_options_fn(*args, monitored=True, **kwargs)
 
         def _invoke(p, t, progress_ts=None, file_blocks=None, model=None, thinking_override=None):
             return invoke_claude_code(
@@ -252,7 +264,7 @@ def _process_message(
                 store_session_fn=store_session,
                 db_get_thread_messages_fn=lambda ts: db_get_thread_messages(db_path, ts),
                 db_get_thread_channel_fn=lambda ts: db_get_thread_channel(db_path, ts),
-                create_options_fn=create_options_fn,
+                create_options_fn=_effective_create_options_fn,
                 mcp_server_names=mcp_server_names or [],
                 mcp_tool_catalog=mcp_tool_catalog,
                 knowledge_index_file=knowledge_index_file,
