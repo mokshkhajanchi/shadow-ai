@@ -240,6 +240,7 @@ def register_events(
     @app.event("reaction_added")
     def _handle_reaction_added(event, logger):
         reaction = event.get("reaction", "")
+        logger.debug(f"[REACTION] Received: {reaction} from {event.get('user')} on {event.get('item', {}).get('ts')}")
         if reaction not in FEEDBACK_REACTIONS:
             return
         item_user = event.get("item_user")

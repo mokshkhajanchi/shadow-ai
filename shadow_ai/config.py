@@ -63,7 +63,7 @@ SUPPORTED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
 
 # ─── Feedback reactions ───────────────────────────────────────────────────────
 
-FEEDBACK_REACTIONS = {"+1": +1, "-1": -1, "tada": +1, "confused": -1}
+FEEDBACK_REACTIONS = {"+1": +1, "-1": -1, "thumbsup": +1, "thumbsdown": -1, "tada": +1, "confused": -1}
 
 
 # ─── Utility functions ────────────────────────────────────────────────────────
