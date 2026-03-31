@@ -323,10 +323,7 @@ def _process_message(
         # ── Learn command: save knowledge from thread ──
         if _is_learn_intent(prompt_lower):
             from shadow_ai.knowledge import save_learned_knowledge
-            slack_client.chat_postMessage(
-                channel=channel, thread_ts=thread_ts,
-                text=":brain: Saving notes from this conversation...",
-            )
+            slack_client.reactions_add(channel=channel, name="brain", timestamp=message_ts)
             messages = db_get_thread_messages(db_path, thread_ts, limit=100)
             if not messages:
                 slack_client.chat_postMessage(
@@ -368,10 +365,7 @@ def _process_message(
                 daemon=True,
             ).start()
 
-            slack_client.chat_postMessage(
-                channel=channel, thread_ts=thread_ts,
-                text=f":white_check_mark: Saved to `{filepath}`. Knowledge index rebuilding.",
-            )
+            slack_client.reactions_add(channel=channel, name="white_check_mark", timestamp=message_ts)
             return
 
         # ── Learn from feedback command ──
