@@ -220,16 +220,6 @@ def register_events(
     def _handle_app_home_opened(event, logger):
         _render_app_home(event.get("user"), slack_client, config)
 
-    # ── Acknowledge reaction events (no-op, prevents Bolt 404 warnings) ──
-
-    @app.event("reaction_added")
-    def _handle_reaction_added(event, logger):
-        pass
-
-    @app.event("reaction_removed")
-    def _handle_reaction_removed(event, logger):
-        pass
-
     # ── stop_session action (button) ─────────────────────────────────────
 
     @app.action("stop_session")

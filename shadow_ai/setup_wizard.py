@@ -72,8 +72,6 @@ SLACK_APP_MANIFEST = """{
         "im:write",
         "mpim:history",
         "mpim:read",
-        "reactions:read",
-        "reactions:write",
         "users:read",
         "files:read"
       ]
@@ -87,9 +85,7 @@ SLACK_APP_MANIFEST = """{
         "message.channels",
         "message.groups",
         "message.im",
-        "message.mpim",
-        "reaction_added",
-        "reaction_removed"
+        "message.mpim"
       ]
     },
     "interactivity": {
