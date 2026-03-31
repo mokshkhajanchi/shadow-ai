@@ -104,6 +104,7 @@ def handle_user_message(
     message_ts: str,
     text: str,
     files: list = None,
+    monitored: bool = False,
     *,
     config: BotConfig,
     slack_client,
@@ -123,7 +124,8 @@ def handle_user_message(
     Entry point from Slack event handlers.
     Dispatches work to the thread pool so it doesn't block other events.
     """
-    if not is_authorized(user_id, config.allowed_user_ids):
+    # Monitored channels: anyone can use the bot. Normal: check auth.
+    if not monitored and not is_authorized(user_id, config.allowed_user_ids):
         slack_client.chat_postMessage(
             channel=channel,
             thread_ts=thread_ts,
@@ -131,9 +133,10 @@ def handle_user_message(
         )
         return
 
-    # React eyes immediately (before submitting to pool)
+    # React immediately (🤖 for monitored, 👀 for normal)
     try:
-        slack_client.reactions_add(channel=channel, name="eyes", timestamp=message_ts)
+        reaction = "robot_face" if monitored else "eyes"
+        slack_client.reactions_add(channel=channel, name=reaction, timestamp=message_ts)
     except Exception:
         pass
 
@@ -141,6 +144,7 @@ def handle_user_message(
     executor.submit(
         _process_message,
         user_id, channel, thread_ts, message_ts, text, files,
+        monitored=monitored,
         config=config,
         slack_client=slack_client,
         bot_user_id=bot_user_id,
@@ -164,6 +168,7 @@ def _process_message(
     message_ts: str,
     text: str,
     files: list = None,
+    monitored: bool = False,
     *,
     config: BotConfig,
     slack_client,
@@ -212,6 +217,18 @@ def _process_message(
         if prompt.lower().startswith("think:"):
             thinking_override = "enabled"
             prompt = prompt[len("think:"):].strip()
+
+        # Monitored channel: use haiku, add context
+        if monitored and not model_override:
+            model_override = "haiku"
+        if monitored:
+            prompt = (
+                "[MONITORED CHANNEL] You are monitoring this Slack channel and auto-replying. "
+                "Reply helpfully and concisely. If the message doesn't need a response "
+                "(it's a statement, acknowledgment, or not directed at anyone), "
+                "reply with ONLY the text 'NO_RESPONSE' and nothing else.\n\n"
+                + prompt
+            )
 
         # ── Build helpers that bind config/deps for command functions ──
         def _send_response(ch, ts, resp):
@@ -426,14 +443,22 @@ def _process_message(
         # Save response
         db_save_message(db_path, thread_ts, "assistant", response)
 
-        # React check mark
-        try:
-            slack_client.reactions_add(channel=channel, name="white_check_mark", timestamp=message_ts)
-        except Exception:
-            pass
+        # Monitored channel: if Claude says NO_RESPONSE, skip posting
+        if monitored and response.strip() == "NO_RESPONSE":
+            logger.info(f"[MONITOR] Skipped reply (NO_RESPONSE) for thread={thread_ts}")
+            try:
+                slack_client.reactions_remove(channel=channel, name="robot_face", timestamp=message_ts)
+            except Exception:
+                pass
+        else:
+            # React check mark
+            try:
+                slack_client.reactions_add(channel=channel, name="white_check_mark", timestamp=message_ts)
+            except Exception:
+                pass
 
-        # Send response + Stop button
-        _send_response(channel, thread_ts, response)
+            # Send response + Stop button
+            _send_response(channel, thread_ts, response)
 
         # Auto-save: save raw conversation to knowledge/conversations/ in background
         try:

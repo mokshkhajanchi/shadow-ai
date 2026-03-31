@@ -8,12 +8,18 @@ Call ``register_events(app, ...)`` once at startup to wire everything up.
 import logging
 import time
 
+import re
+
 from shadow_ai.config import BotConfig
 from shadow_ai.db import (
+    db_add_monitored_channel,
     db_get_daily_cost,
+    db_get_monitored_channels,
     db_get_recent_threads,
     db_get_total_cost,
     db_is_active_thread,
+    db_is_monitored_channel,
+    db_remove_monitored_channel,
     db_stop_thread,
 )
 from shadow_ai.sessions import (
@@ -176,7 +182,31 @@ def register_events(
             **_hum_kwargs,
         )
 
-    # ── message: follow-ups in tracked threads + DMs ─────────────────────
+    # ── Noise filter for monitored channels ────────────────────────────
+
+    _NOISE_WORDS = {
+        "ok", "okay", "thanks", "thank you", "thx", "ty", "got it", "cool",
+        "nice", "great", "sure", "yes", "no", "yep", "nope", "done", "np",
+        "ack", "acknowledged", "noted", "lgtm", "wfm", "sg", "roger",
+    }
+
+    def _is_noise(text: str) -> bool:
+        """Return True if the message is noise (not worth replying to)."""
+        t = text.strip().lower()
+        if len(t) < 5:
+            return True
+        # Emoji-only messages
+        if re.match(r'^[\s:+\-_a-z0-9]*$', t) and ':' in t:
+            return True
+        # Common acknowledgments
+        if t in _NOISE_WORDS:
+            return True
+        # Just a URL with no surrounding text
+        if re.match(r'^<https?://[^>]+>$', t):
+            return True
+        return False
+
+    # ── message: follow-ups in tracked threads + DMs + monitored channels ──
 
     @app.event("message")
     def _handle_message(event, say):
@@ -204,13 +234,33 @@ def register_events(
         has_session = get_session(effective_thread_ts) is not None
         has_db_thread = db_is_active_thread(db_path, effective_thread_ts)
 
-        # Only process if this is a DM or a known active thread
+        # Check if this is a monitored channel
+        is_monitored = db_is_monitored_channel(db_path, channel)
+
+        # Monitored channel: new top-level message or reply in bot's thread
+        if is_monitored and not is_dm and not has_session and not has_db_thread:
+            # Skip noise messages
+            if _is_noise(text):
+                return
+            # Top-level message in monitored channel — reply in thread
+            handle_user_message(
+                user_id, channel, message_ts, message_ts, text,
+                files=event.get("files"),
+                monitored=True,
+                **_hum_kwargs,
+            )
+            return
+
+        # Normal flow: DM or known active thread
         if not is_dm and not has_session and not has_db_thread:
             return
 
+        # If this is a reply in a thread in a monitored channel, pass monitored flag
+        monitored = is_monitored and not is_dm
         handle_user_message(
             user_id, channel, effective_thread_ts, message_ts, text,
             files=event.get("files"),
+            monitored=monitored,
             **_hum_kwargs,
         )
 
@@ -360,5 +410,56 @@ def register_events(
             pct = (daily / config.daily_budget_usd * 100) if config.daily_budget_usd > 0 else 0
             lines.append(f"• Budget: *${config.daily_budget_usd:.2f}* ({pct:.1f}% used, ${remaining:.4f} remaining)")
         respond("\n".join(lines), response_type="ephemeral")
+
+    # ── /claude-monitor command ────────────────────────────────────────
+
+    @app.command("/claude-monitor")
+    def _handle_monitor_command(ack, command, respond):
+        ack()
+        if not is_authorized(command["user_id"], config.allowed_user_ids):
+            respond(":no_entry: Not authorized.", response_type="ephemeral")
+            return
+
+        text = command.get("text", "").strip()
+        user_id = command["user_id"]
+
+        # /claude-monitor list
+        if text == "list":
+            channels = db_get_monitored_channels(db_path)
+            if not channels:
+                respond(":eyes: No channels being monitored.", response_type="ephemeral")
+            else:
+                channel_list = "\n".join(f"• <#{c}>" for c in channels)
+                respond(f":eyes: *Monitored channels:*\n{channel_list}", response_type="ephemeral")
+            return
+
+        # /claude-monitor stop <#channel>
+        if text.startswith("stop"):
+            channel_match = re.search(r"<#(C[A-Z0-9]+)", text)
+            if not channel_match:
+                respond("Usage: `/claude-monitor stop #channel`", response_type="ephemeral")
+                return
+            channel_id = channel_match.group(1)
+            db_remove_monitored_channel(db_path, channel_id)
+            respond(f":octagonal_sign: Stopped monitoring <#{channel_id}>.", response_type="ephemeral")
+            logger.info(f"[MONITOR] Stopped monitoring {channel_id} by {user_id}")
+            return
+
+        # /claude-monitor <#channel>
+        channel_match = re.search(r"<#(C[A-Z0-9]+)", text)
+        if not channel_match:
+            respond(
+                "*Usage:*\n"
+                "• `/claude-monitor #channel` — start monitoring\n"
+                "• `/claude-monitor stop #channel` — stop monitoring\n"
+                "• `/claude-monitor list` — show monitored channels",
+                response_type="ephemeral",
+            )
+            return
+
+        channel_id = channel_match.group(1)
+        db_add_monitored_channel(db_path, channel_id, user_id)
+        respond(f":robot_face: Now monitoring <#{channel_id}>. I'll reply to questions in threads.", response_type="ephemeral")
+        logger.info(f"[MONITOR] Started monitoring {channel_id} by {user_id}")
 
     logger.info("[EVENTS] All Slack event/action/command handlers registered")

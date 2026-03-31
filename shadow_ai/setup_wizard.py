@@ -56,7 +56,13 @@ SLACK_APP_MANIFEST = """{
     "bot_user": {
       "display_name": "BOT_DISPLAY_NAME",
       "always_online": true
-    }
+    },
+    "slash_commands": [
+      {"command": "/claude", "description": "Ask Claude Code anything", "usage_hint": "[message]"},
+      {"command": "/claude-status", "description": "Show bot status and costs"},
+      {"command": "/claude-cost", "description": "Show daily and total costs"},
+      {"command": "/claude-monitor", "description": "Monitor a channel for auto-replies", "usage_hint": "[#channel | stop #channel | list]"}
+    ]
   },
   "oauth_config": {
     "scopes": {
@@ -65,6 +71,7 @@ SLACK_APP_MANIFEST = """{
         "channels:history",
         "channels:read",
         "chat:write",
+        "commands",
         "groups:history",
         "groups:read",
         "im:history",

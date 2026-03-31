@@ -79,6 +79,12 @@ def init_db(db_path: str):
                 CREATE INDEX IF NOT EXISTS idx_usage_created
                     ON usage(created_at);
 
+                CREATE TABLE IF NOT EXISTS monitored_channels (
+                    channel_id  TEXT PRIMARY KEY,
+                    added_by    TEXT NOT NULL,
+                    created_at  TEXT NOT NULL
+                );
+
             """)
             # Migrate: add last_slack_ts if missing (existing DBs)
             try:
@@ -264,3 +270,39 @@ def db_get_recent_threads(db_path: str, limit: int = 10) -> list[dict]:
                 LIMIT ?
             """, (limit,)).fetchall()
     return [dict(r) for r in rows]
+
+
+# ─── Monitored Channels ──────────────────────────────────────────────────────
+
+def db_add_monitored_channel(db_path: str, channel_id: str, user_id: str):
+    now = datetime.now().isoformat()
+    with _db_lock:
+        with _db_conn(db_path) as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO monitored_channels (channel_id, added_by, created_at) VALUES (?, ?, ?)",
+                (channel_id, user_id, now),
+            )
+            conn.commit()
+
+
+def db_remove_monitored_channel(db_path: str, channel_id: str):
+    with _db_lock:
+        with _db_conn(db_path) as conn:
+            conn.execute("DELETE FROM monitored_channels WHERE channel_id = ?", (channel_id,))
+            conn.commit()
+
+
+def db_get_monitored_channels(db_path: str) -> list[str]:
+    with _db_lock:
+        with _db_conn(db_path) as conn:
+            rows = conn.execute("SELECT channel_id FROM monitored_channels").fetchall()
+    return [r["channel_id"] for r in rows]
+
+
+def db_is_monitored_channel(db_path: str, channel_id: str) -> bool:
+    with _db_lock:
+        with _db_conn(db_path) as conn:
+            row = conn.execute(
+                "SELECT 1 FROM monitored_channels WHERE channel_id = ?", (channel_id,)
+            ).fetchone()
+    return row is not None

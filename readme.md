@@ -57,7 +57,7 @@ Your `.env`, `knowledge/`, and local data are untouched during updates.
 
 ## Usage
 
-Mention the bot in any Slack channel or DM:
+Mention the bot in any Slack channel or DM, or set up channel monitoring:
 
 | Command | What it does |
 |---|---|
@@ -70,6 +70,20 @@ Mention the bot in any Slack channel or DM:
 | `review <PR-URL>` | Review an Azure DevOps PR |
 | `status` | Active sessions, cost, feedback stats |
 | `kill all` | Stop all sessions |
+
+---
+
+## Channel Monitoring
+
+Make the bot auto-reply to messages in a channel:
+
+```
+/claude-monitor #channel       — start monitoring
+/claude-monitor stop #channel  — stop monitoring
+/claude-monitor list           — show monitored channels
+```
+
+The bot replies in threads, uses haiku (cheapest model), and skips noise messages ("ok", "thanks", emoji-only). If a message doesn't need a response, the bot stays silent.
 
 ---
 
