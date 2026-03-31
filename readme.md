@@ -124,6 +124,20 @@ Restart the bot — `shadow-ai doctor` will show the server count. The more tool
 
 ---
 
+## Agents
+
+The bot ships with specialized agents that Claude uses automatically:
+
+| Agent | When it's used |
+|---|---|
+| **code-reviewer** | PR reviews — correctness, security, performance |
+| **debugger** | Error tracing — systematic root cause analysis |
+| **note-taker** | Knowledge extraction — saves structured notes |
+
+Add your own agents by dropping `.md` files in `knowledge/agents/`. Format: YAML frontmatter (name, description, tools, model) + markdown prompt body.
+
+---
+
 ## Knowledge Base
 
 The bot learns and remembers across conversations:

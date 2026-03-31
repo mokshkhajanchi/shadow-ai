@@ -42,6 +42,9 @@ def build_base_system_prompt(
         "(Azure DevOps MCP for dev.azure.com URLs, Jira MCP for atlassian.net URLs, "
         "Sentry MCP for sentry URLs, Grafana MCP for grafana URLs, etc.). "
         "Only use Chrome browser/WebFetch as a LAST RESORT if no MCP tool can handle the URL.\n"
+        "- AGENTS: You have specialized agents available via the Agent tool. "
+        "Use 'code-reviewer' for PR reviews, 'debugger' for tracing errors, "
+        "'note-taker' for extracting knowledge. Prefer these over doing everything inline.\n"
         "--- END RESPONSE GUIDELINES ---\n"
     ]
 
@@ -133,6 +136,7 @@ def create_options(
         SYSTEM_PROMPT_FILE  — str, path to user-specific system prompt .md file
     """
     from claude_agent_sdk import ClaudeAgentOptions
+    from shadow_ai.agent_loader import load_agents
 
     allowed_tools = list(getattr(config, "allowed_tools", ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "Agent"]))
     permission_mode = getattr(config, "permission_mode", "acceptEdits")
@@ -158,6 +162,13 @@ def create_options(
         setting_sources=["user", "project"],
         max_buffer_size=10 * 1024 * 1024,  # 10MB (default 1MB too small for large fixtures)
     )
+
+    # Load bundled + custom agents
+    bundled_agents_dir = Path(__file__).parent / "agents"
+    custom_agents_dir = Path(cwd) / "knowledge" / "agents"
+    agents = load_agents(bundled_agents_dir, custom_agents_dir)
+    if agents:
+        opts.agents = agents
 
     # Model selection: inline override > env var > SDK default
     effective_model = model or default_model
