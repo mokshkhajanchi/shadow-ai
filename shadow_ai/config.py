@@ -61,11 +61,6 @@ MODEL_ALIASES = {
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 SUPPORTED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
 
-# ─── Feedback reactions ───────────────────────────────────────────────────────
-
-FEEDBACK_REACTIONS = {"+1": +1, "-1": -1, "thumbsup": +1, "thumbsdown": -1, "tada": +1, "confused": -1}
-
-
 # ─── Utility functions ────────────────────────────────────────────────────────
 
 def _human_size(size_bytes: int) -> str:

@@ -9,11 +9,10 @@ import logging
 import traceback
 from datetime import datetime
 
-from shadow_ai.config import BotConfig, FEEDBACK_REACTIONS
+from shadow_ai.config import BotConfig
 from shadow_ai.db import (
     db_create_thread,
     db_get_daily_cost,
-    db_get_feedback_stats,
     db_get_last_slack_ts,
     db_get_thread_channel,
     db_get_thread_messages,
@@ -272,9 +271,6 @@ def _process_message(
                 remaining = max(0, config.daily_budget_usd - daily)
                 lines.append(f"• Daily budget: *${config.daily_budget_usd:.2f}* (${remaining:.4f} remaining)")
             lines.append(f"• All-time cost: *${total:.4f}*")
-            stats = db_get_feedback_stats(db_path)
-            if stats["total_positive"] + stats["total_negative"] > 0:
-                lines.append(f"• Satisfaction: *{stats['satisfaction_pct']:.0f}%* ({stats['total_positive']} :+1:  {stats['total_negative']} :-1:)")
             slack_client.chat_postMessage(
                 channel=channel, thread_ts=thread_ts, text="\n".join(lines),
             )
@@ -366,69 +362,6 @@ def _process_message(
             ).start()
 
             slack_client.reactions_add(channel=channel, name="white_check_mark", timestamp=message_ts)
-            return
-
-        # ── Learn from feedback command ──
-        if prompt_lower in ("learn from feedback", "analyze feedback"):
-            from shadow_ai.db import db_get_feedback_messages
-            from shadow_ai.knowledge import save_feedback_lessons
-            slack_client.chat_postMessage(
-                channel=channel, thread_ts=thread_ts,
-                text=":mag: Analyzing feedback patterns...",
-            )
-            neg_messages = db_get_feedback_messages(db_path, score_filter=-1, limit=30)
-            if not neg_messages:
-                slack_client.chat_postMessage(
-                    channel=channel, thread_ts=thread_ts,
-                    text=":white_check_mark: No negative feedback found. Nothing to learn from!",
-                )
-                return
-
-            # Build analysis text
-            analysis_parts = []
-            for i, fm in enumerate(neg_messages, 1):
-                analysis_parts.append(
-                    f"--- Case {i} ({fm['reaction']}) ---\n"
-                    f"User asked: {fm['user_question']}\n"
-                    f"Bot said: {fm['bot_response']}\n"
-                )
-            analysis_text = "\n".join(analysis_parts)
-
-            analyze_prompt = (
-                f"Analyze these {len(neg_messages)} negatively-rated bot responses. "
-                "Identify patterns of what went wrong. "
-                "Output a list of concrete rules the bot should follow to avoid these mistakes. "
-                "Format each rule as: '- DO NOT: <bad behavior>. INSTEAD: <correct behavior>.'\n\n"
-                f"{analysis_text[:8000]}"
-            )
-            response, cost_info = _invoke(
-                analyze_prompt, thread_ts, model="haiku",
-            )
-            if cost_info:
-                db_save_usage(db_path, thread_ts, cost_info)
-
-            filepath = save_feedback_lessons(response)
-
-            # Rebuild knowledge index in background
-            import threading
-            from shadow_ai.knowledge import rebuild_knowledge_index
-            threading.Thread(
-                target=rebuild_knowledge_index,
-                args=(config.knowledge_paths, config.claude_work_dir),
-                kwargs=dict(
-                    inline_threshold=config.knowledge_inline_threshold,
-                    total_inline_limit=config.knowledge_total_inline_limit,
-                    index_max_entries=config.knowledge_index_max_entries,
-                    codebase_max_size=config.codebase_index_max_size,
-                    gitnexus_available=config.gitnexus_available,
-                ),
-                daemon=True,
-            ).start()
-
-            slack_client.chat_postMessage(
-                channel=channel, thread_ts=thread_ts,
-                text=f":white_check_mark: Analyzed {len(neg_messages)} negative reactions. Lessons active immediately, index rebuilding in background.\n\n{response[:1000]}",
-            )
             return
 
         # ── Daily budget check ──

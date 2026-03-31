@@ -79,19 +79,6 @@ def init_db(db_path: str):
                 CREATE INDEX IF NOT EXISTS idx_usage_created
                     ON usage(created_at);
 
-                CREATE TABLE IF NOT EXISTS feedback (
-                    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                    message_ts  TEXT NOT NULL,
-                    thread_ts   TEXT,
-                    channel     TEXT NOT NULL,
-                    user_id     TEXT NOT NULL,
-                    reaction    TEXT NOT NULL,
-                    score       INTEGER NOT NULL,
-                    created_at  TEXT NOT NULL
-                );
-
-                CREATE UNIQUE INDEX IF NOT EXISTS idx_feedback_unique
-                    ON feedback(message_ts, user_id, reaction);
             """)
             # Migrate: add last_slack_ts if missing (existing DBs)
             try:
@@ -258,108 +245,6 @@ def db_get_total_cost(db_path: str) -> float:
                 "SELECT COALESCE(SUM(cost_usd), 0) as total FROM usage"
             ).fetchone()
     return row["total"] if row else 0.0
-
-
-# ─── Feedback ─────────────────────────────────────────────────────────────────
-
-def db_save_feedback(
-    db_path: str,
-    message_ts: str,
-    thread_ts: str | None,
-    channel: str,
-    user_id: str,
-    reaction: str,
-    score: int,
-):
-    now = datetime.now().isoformat()
-    with _db_lock:
-        with _db_conn(db_path) as conn:
-            conn.execute(
-                "INSERT OR IGNORE INTO feedback (message_ts, thread_ts, channel, user_id, reaction, score, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (message_ts, thread_ts, channel, user_id, reaction, score, now),
-            )
-            conn.commit()
-
-
-def db_remove_feedback(db_path: str, message_ts: str, user_id: str, reaction: str):
-    with _db_lock:
-        with _db_conn(db_path) as conn:
-            conn.execute(
-                "DELETE FROM feedback WHERE message_ts = ? AND user_id = ? AND reaction = ?",
-                (message_ts, user_id, reaction),
-            )
-            conn.commit()
-
-
-def db_get_feedback_stats(db_path: str) -> dict:
-    today = datetime.now().strftime("%Y-%m-%d")
-    with _db_lock:
-        with _db_conn(db_path) as conn:
-            row = conn.execute("""
-                SELECT
-                    COALESCE(SUM(CASE WHEN score > 0 THEN 1 ELSE 0 END), 0) as total_pos,
-                    COALESCE(SUM(CASE WHEN score < 0 THEN 1 ELSE 0 END), 0) as total_neg,
-                    COALESCE(SUM(CASE WHEN score > 0 AND created_at >= ? THEN 1 ELSE 0 END), 0) as today_pos,
-                    COALESCE(SUM(CASE WHEN score < 0 AND created_at >= ? THEN 1 ELSE 0 END), 0) as today_neg
-                FROM feedback
-            """, (today, today)).fetchone()
-    total = row["total_pos"] + row["total_neg"]
-    return {
-        "total_positive": row["total_pos"],
-        "total_negative": row["total_neg"],
-        "today_positive": row["today_pos"],
-        "today_negative": row["today_neg"],
-        "satisfaction_pct": (row["total_pos"] / total * 100) if total > 0 else 0,
-    }
-
-
-# ─── Feedback Analysis ────────────────────────────────────────────────────────
-
-def db_get_feedback_messages(db_path: str, score_filter: int = -1, limit: int = 20) -> list[dict]:
-    """Get messages that received specific feedback (default: negative) with thread context.
-
-    Returns list of dicts with: thread_ts, reaction, score, user_question, bot_response
-    """
-    with _db_lock:
-        with _db_conn(db_path) as conn:
-            # Get feedback entries matching score filter
-            op = "<" if score_filter < 0 else ">"
-            rows = conn.execute(f"""
-                SELECT f.thread_ts, f.message_ts, f.reaction, f.score, f.created_at
-                FROM feedback f
-                WHERE f.score {op} 0
-                ORDER BY f.created_at DESC
-                LIMIT ?
-            """, (limit,)).fetchall()
-
-    results = []
-    for row in rows:
-        thread_ts = row["thread_ts"]
-        if not thread_ts:
-            continue
-        # Get the conversation for this thread
-        messages = db_get_thread_messages(db_path, thread_ts, limit=10)
-        if not messages:
-            continue
-        # Find the user question and bot response pair
-        user_q = ""
-        bot_r = ""
-        for i, msg in enumerate(messages):
-            if msg["role"] == "assistant":
-                bot_r = msg["content"][:500]  # Cap at 500 chars
-                # Look for preceding user message
-                if i > 0 and messages[i - 1]["role"] == "user":
-                    user_q = messages[i - 1]["content"][:500]
-                break
-        results.append({
-            "thread_ts": thread_ts,
-            "reaction": row["reaction"],
-            "score": row["score"],
-            "user_question": user_q,
-            "bot_response": bot_r,
-            "created_at": row["created_at"],
-        })
-    return results
 
 
 # ─── Reporting ────────────────────────────────────────────────────────────────

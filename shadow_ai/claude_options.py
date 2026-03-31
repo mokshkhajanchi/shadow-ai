@@ -181,29 +181,12 @@ def create_options(
 
     custom_prompt = build_custom_prompt(system_prompt_file)
 
-    # Load feedback lessons if they exist
-    feedback_lessons = ""
-    feedback_path = os.path.join(cwd, "knowledge", "notes", "feedback_lessons.md")
-    if os.path.isfile(feedback_path):
-        try:
-            with open(feedback_path) as f:
-                feedback_lessons = f.read().strip()
-        except Exception:
-            pass
-
     append_text = base_prompt
     if custom_prompt:
         append_text += (
             "\n\n--- CUSTOM INSTRUCTIONS ---\n"
             + custom_prompt
             + "\n--- END CUSTOM INSTRUCTIONS ---\n"
-        )
-    if feedback_lessons:
-        append_text += (
-            "\n\n--- LESSONS FROM USER FEEDBACK ---\n"
-            "The following rules were learned from negatively-rated responses. Follow them strictly.\n\n"
-            + feedback_lessons
-            + "\n--- END FEEDBACK LESSONS ---\n"
         )
 
     # Inline summarized notes from knowledge/notes/ into system prompt

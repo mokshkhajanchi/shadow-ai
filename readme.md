@@ -67,7 +67,6 @@ Mention the bot in any Slack channel or DM:
 | `think: <message>` | Extended reasoning mode |
 | `summarize` | Recap the thread |
 | `learn` / `take note` | Save curated notes from this conversation |
-| `learn from feedback` | Analyze reactions and improve |
 | `review <PR-URL>` | Review an Azure DevOps PR |
 | `status` | Active sessions, cost, feedback stats |
 | `kill all` | Stop all sessions |
@@ -131,7 +130,6 @@ The bot learns and remembers across conversations:
 
 - **Auto-save** — every conversation is saved to `knowledge/conversations/` automatically
 - **Notes** — say `learn`, `save this`, `remember this`, `take note` (or similar) in any thread to save curated notes to `knowledge/notes/`
-- **Feedback** — react with 👎 to responses, then say `learn from feedback` to generate improvement rules
 - **Proactive** — saved notes are injected into every new session so the bot remembers context without being asked
 
 Notes are markdown files — human-readable and editable. The bot gets smarter the more you use it.

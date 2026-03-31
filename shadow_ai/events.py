@@ -8,15 +8,12 @@ Call ``register_events(app, ...)`` once at startup to wire everything up.
 import logging
 import time
 
-from shadow_ai.config import BotConfig, FEEDBACK_REACTIONS
+from shadow_ai.config import BotConfig
 from shadow_ai.db import (
     db_get_daily_cost,
-    db_get_feedback_stats,
     db_get_recent_threads,
     db_get_total_cost,
     db_is_active_thread,
-    db_remove_feedback,
-    db_save_feedback,
     db_stop_thread,
 )
 from shadow_ai.sessions import (
@@ -65,18 +62,6 @@ def _render_app_home(user_id: str, slack_client, config: BotConfig):
             f":bank: *All-Time Cost:* ${total_cost:.4f}"
         )}
     })
-
-    # Feedback stats
-    fb_stats = db_get_feedback_stats(db_path)
-    fb_total = fb_stats["total_positive"] + fb_stats["total_negative"]
-    if fb_total > 0:
-        blocks.append({
-            "type": "section",
-            "text": {"type": "mrkdwn", "text": (
-                f":star: *Satisfaction:* {fb_stats['satisfaction_pct']:.0f}% ({fb_total} ratings) | "
-                f"Today: {fb_stats['today_positive']} :+1:  {fb_stats['today_negative']} :-1:"
-            )}
-        })
 
     # Quick actions
     blocks.append({"type": "actions", "elements": [
@@ -234,75 +219,6 @@ def register_events(
     @app.event("app_home_opened")
     def _handle_app_home_opened(event, logger):
         _render_app_home(event.get("user"), slack_client, config)
-
-    # ── reaction_added: feedback tracking ────────────────────────────────
-
-    @app.event("reaction_added")
-    def _handle_reaction_added(event, logger):
-        reaction = event.get("reaction", "")
-        # Strip skin-tone suffixes (e.g. "+1::skin-tone-2" → "+1")
-        base_reaction = reaction.split("::")[0]
-        logger.info(f"[REACTION] Received: {reaction} from {event.get('user')} on {event.get('item', {}).get('ts')}")
-        if base_reaction not in FEEDBACK_REACTIONS:
-            return
-        reaction = base_reaction
-        item_user = event.get("item_user")
-        if item_user != bot_user_id:
-            return
-        item = event.get("item", {})
-        if item.get("type") != "message":
-            return
-
-        message_ts = item.get("ts")
-        channel = item.get("channel")
-        user_id = event.get("user")
-
-        # Look up thread_ts from the reacted message
-        thread_ts = None
-        try:
-            result = slack_client.conversations_history(
-                channel=channel, latest=message_ts, inclusive=True, limit=1,
-            )
-            msgs = result.get("messages", [])
-            if msgs:
-                thread_ts = msgs[0].get("thread_ts", message_ts)
-        except Exception:
-            pass
-
-        score = FEEDBACK_REACTIONS[reaction]
-        db_save_feedback(db_path, message_ts, thread_ts, channel, user_id, reaction, score)
-        logger.info(f"[FEEDBACK] {reaction} ({score:+d}) on {message_ts} by {user_id}")
-
-        # Auto-regenerate feedback lessons on negative reactions
-        if score < 0:
-            import threading
-            from shadow_ai.knowledge import auto_regenerate_feedback_lessons
-            threading.Thread(
-                target=auto_regenerate_feedback_lessons,
-                args=(db_path, config, create_options_fn),
-                kwargs=dict(
-                    mcp_server_names=mcp_server_names,
-                    mcp_tool_catalog=mcp_tool_catalog,
-                    knowledge_index_file=knowledge_index_file,
-                    knowledge_dirs=knowledge_dirs,
-                ),
-                daemon=True,
-            ).start()
-
-    # ── reaction_removed: feedback removal ───────────────────────────────
-
-    @app.event("reaction_removed")
-    def _handle_reaction_removed(event, logger):
-        reaction = event.get("reaction", "")
-        if reaction not in FEEDBACK_REACTIONS:
-            return
-        if event.get("item_user") != bot_user_id:
-            return
-        item = event.get("item", {})
-        if item.get("type") != "message":
-            return
-        db_remove_feedback(db_path, item.get("ts"), event.get("user"), reaction)
-        logger.info(f"[FEEDBACK] Removed {reaction} on {item.get('ts')} by {event.get('user')}")
 
     # ── stop_session action (button) ─────────────────────────────────────
 
