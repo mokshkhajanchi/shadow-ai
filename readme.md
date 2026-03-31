@@ -134,7 +134,28 @@ The bot ships with specialized agents that Claude uses automatically:
 | **debugger** | Error tracing — systematic root cause analysis |
 | **note-taker** | Knowledge extraction — saves structured notes |
 
-Add your own agents by dropping `.md` files in `knowledge/agents/`. Format: YAML frontmatter (name, description, tools, model) + markdown prompt body.
+The bot also auto-discovers agents from Claude Code's native locations (`~/.claude/agents/` and `.claude/agents/`).
+
+### Creating Custom Agents
+
+Drop a `.md` file in `knowledge/agents/`:
+
+```markdown
+---
+name: my-agent
+description: When to use this agent.
+tools:
+  - Read
+  - Bash
+  - Grep
+model: haiku
+maxTurns: 10
+---
+
+Agent instructions here. What it does, how, and rules to follow.
+```
+
+Restart the bot — it auto-discovers new agents. No code changes needed.
 
 ---
 
