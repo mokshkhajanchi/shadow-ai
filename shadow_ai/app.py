@@ -98,12 +98,13 @@ def main():
     # Auto-create knowledge directories
     Path("knowledge/notes").mkdir(parents=True, exist_ok=True)
     Path("knowledge/conversations").mkdir(parents=True, exist_ok=True)
+    Path("knowledge/agents").mkdir(parents=True, exist_ok=True)
+    Path("knowledge/skills").mkdir(parents=True, exist_ok=True)
 
-    # Install bundled + custom skills into ~/.claude/skills/ for native discovery
+    # Install skills into ~/.claude/skills/ for native Claude Code discovery
     from shadow_ai.skill_loader import install_skills_to_claude
-    bundled_skills = Path(__file__).parent / "skills"
-    custom_skills = Path("knowledge") / "skills"
-    skill_count = install_skills_to_claude(bundled_skills, custom_skills)
+    skills_dir = Path("knowledge") / "skills"
+    skill_count = install_skills_to_claude(skills_dir)
     logger.info(f"Skills symlinked to ~/.claude/skills/: {skill_count}")
 
     # 3. Create Slack Bolt App and WebClient

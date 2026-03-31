@@ -202,6 +202,8 @@ def run_wizard():
     # Auto-create required directories
     Path("knowledge/notes").mkdir(parents=True, exist_ok=True)
     Path("knowledge/conversations").mkdir(parents=True, exist_ok=True)
+    Path("knowledge/agents").mkdir(parents=True, exist_ok=True)
+    Path("knowledge/skills").mkdir(parents=True, exist_ok=True)
     Path("~/Projects").expanduser().mkdir(parents=True, exist_ok=True)
 
     print(f"  ┌─────────────────────────────────────────┐")

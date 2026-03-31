@@ -166,17 +166,15 @@ def create_options(
         max_buffer_size=10 * 1024 * 1024,  # 10MB (default 1MB too small for large fixtures)
     )
 
-    # Load bundled + custom agents
-    bundled_agents_dir = Path(__file__).parent / "agents"
-    custom_agents_dir = Path(cwd) / "knowledge" / "agents"
-    agents = load_agents(bundled_agents_dir, custom_agents_dir)
+    # Load agents from knowledge/agents/
+    agents_dir = Path(cwd) / "knowledge" / "agents"
+    agents = load_agents(agents_dir)
     if agents:
         opts.agents = agents
 
-    # Load bundled + custom skills
-    bundled_skills_dir = Path(__file__).parent / "skills"
-    custom_skills_dir = Path(cwd) / "knowledge" / "skills"
-    loaded_skills = load_skills(bundled_skills_dir, custom_skills_dir)
+    # Load skills from knowledge/skills/
+    skills_dir = Path(cwd) / "knowledge" / "skills"
+    loaded_skills = load_skills(skills_dir)
 
     # Model selection: inline override > env var > SDK default
     effective_model = model or default_model

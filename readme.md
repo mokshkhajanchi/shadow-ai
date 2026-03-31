@@ -134,8 +134,6 @@ The bot ships with specialized agents that Claude uses automatically:
 | **debugger** | Error tracing — systematic root cause analysis |
 | **note-taker** | Knowledge extraction — saves structured notes |
 
-The bot also auto-discovers agents from Claude Code's native locations (`~/.claude/agents/` and `.claude/agents/`).
-
 ### Creating Custom Agents
 
 Drop a `.md` file in `knowledge/agents/`:
