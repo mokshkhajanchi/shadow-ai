@@ -321,26 +321,30 @@ def _process_message(
             from shadow_ai.knowledge import save_learned_knowledge
             slack_client.reactions_add(channel=channel, name="brain", timestamp=message_ts)
             messages = db_get_thread_messages(db_path, thread_ts, limit=100)
-            if not messages:
-                slack_client.chat_postMessage(
-                    channel=channel, thread_ts=thread_ts,
-                    text=":x: No conversation history found.",
-                )
-                return
 
-            # Build conversation text (all messages)
-            convo_parts = []
-            for msg in messages:
-                role = "User" if msg["role"] == "user" else "Assistant"
-                convo_parts.append(f"**{role}**: {msg['content']}")
-            convo_text = "\n\n".join(convo_parts)
+            if messages:
+                # Build from DB history
+                convo_parts = []
+                for msg in messages:
+                    role = "User" if msg["role"] == "user" else "Assistant"
+                    convo_parts.append(f"**{role}**: {msg['content']}")
+                convo_text = "\n\n".join(convo_parts)
+            else:
+                # Fallback: fetch thread messages from Slack API directly
+                convo_text, _ = fetch_thread_messages(slack_client, channel, thread_ts)
+                if not convo_text:
+                    slack_client.chat_postMessage(
+                        channel=channel, thread_ts=thread_ts,
+                        text=":x: No conversation history found.",
+                    )
+                    return
 
-            # Topic from first user message (simple, no API call)
+            # Topic from first line of conversation text
             topic = "conversation"
-            for msg in messages:
-                if msg["role"] == "user" and msg["content"].strip():
-                    first_line = msg["content"].strip().split("\n")[0]
-                    topic = first_line.strip("*_#`- ").strip()[:50] or topic
+            for line in convo_text.split("\n"):
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    topic = line.strip("*_#`- ").strip()[:50] or topic
                     break
 
             filepath = save_learned_knowledge(convo_text, topic, thread_ts)
