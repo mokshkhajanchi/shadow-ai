@@ -255,12 +255,11 @@ def register_events(
         if not is_dm and not has_session and not has_db_thread:
             return
 
-        # If this is a reply in a thread in a monitored channel, pass monitored flag
-        monitored = is_monitored and not is_dm
+        # Thread follow-ups in monitored channels still require authorization
+        # (only the initial auto-reply skips auth — follow-ups have full tool access)
         handle_user_message(
             user_id, channel, effective_thread_ts, message_ts, text,
             files=event.get("files"),
-            monitored=monitored,
             **_hum_kwargs,
         )
 
