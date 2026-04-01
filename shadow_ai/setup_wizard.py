@@ -56,11 +56,7 @@ SLACK_APP_MANIFEST = """{
     "bot_user": {
       "display_name": "BOT_DISPLAY_NAME",
       "always_online": true
-    },
-    "slash_commands": [
-      {"command": "/shadow", "description": "Ask shadow.ai anything", "usage_hint": "[message]"},
-      {"command": "/shadow-monitor", "description": "Monitor a channel for auto-replies", "usage_hint": "[#channel | stop #channel | list]"}
-    ]
+    }
   },
   "oauth_config": {
     "scopes": {
@@ -70,7 +66,6 @@ SLACK_APP_MANIFEST = """{
         "channels:join",
         "channels:read",
         "chat:write",
-        "commands",
         "groups:history",
         "groups:read",
         "im:history",

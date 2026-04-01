@@ -57,18 +57,19 @@ Your `.env`, `knowledge/`, and local data are untouched during updates.
 
 ## Usage
 
-Mention the bot in any Slack channel or DM, or set up channel monitoring:
+Mention the bot in any Slack channel or DM:
 
 | Command | What it does |
 |---|---|
 | `@bot <message>` | Ask anything — full Claude Code access |
-| `/shadow <message>` | Same as @mention, works anywhere |
-| `/shadow-monitor #channel` | Auto-reply to channel messages |
 | `opus:` / `haiku:` / `sonnet:` | Prefix to choose model |
 | `think: <message>` | Extended reasoning mode |
 | `summarize` | Recap the thread |
 | `learn` / `take note` | Save notes from this conversation |
 | `review <PR-URL>` | Review an Azure DevOps PR |
+| `monitor #channel` | Auto-reply to channel messages |
+| `stop monitoring #channel` | Stop monitoring a channel |
+| `monitoring` | List monitored channels |
 | `status` | Active sessions and cost |
 | `kill all` | Stop all sessions |
 
@@ -79,12 +80,12 @@ Mention the bot in any Slack channel or DM, or set up channel monitoring:
 Make the bot auto-reply to messages in a channel:
 
 ```
-/shadow-monitor #channel       — start monitoring
-/shadow-monitor stop #channel  — stop monitoring
-/shadow-monitor list           — show monitored channels
+@bot monitor #channel           — start monitoring
+@bot stop monitoring #channel   — stop monitoring
+@bot monitoring                 — show monitored channels
 ```
 
-The bot replies in threads, uses haiku (cheapest model), and skips noise messages ("ok", "thanks", emoji-only). If a message doesn't need a response, the bot stays silent.
+The bot joins the channel, replies in threads, uses haiku (cheapest model), and skips noise messages. Each person's bot operates independently — no slash command conflicts.
 
 ---
 

@@ -293,6 +293,65 @@ def _process_message(
             )
             return
 
+        # ── Monitor commands ──
+        if prompt_lower in ("monitoring", "list monitors", "monitors"):
+            from shadow_ai.db import db_get_monitored_channels
+            channels = db_get_monitored_channels(db_path)
+            if not channels:
+                slack_client.chat_postMessage(
+                    channel=channel, thread_ts=thread_ts,
+                    text=":eyes: Not monitoring any channels.",
+                )
+            else:
+                channel_list = "\n".join(f"• <#{c}>" for c in channels)
+                slack_client.chat_postMessage(
+                    channel=channel, thread_ts=thread_ts,
+                    text=f":robot_face: *Monitored channels:*\n{channel_list}",
+                )
+            return
+
+        if prompt_lower.startswith("monitor "):
+            import re as _re
+            from shadow_ai.db import db_add_monitored_channel
+            channel_match = _re.search(r"<#(C[A-Z0-9]+)", prompt)
+            if not channel_match:
+                slack_client.chat_postMessage(
+                    channel=channel, thread_ts=thread_ts,
+                    text="Usage: `monitor #channel`",
+                )
+                return
+            target_channel = channel_match.group(1)
+            try:
+                slack_client.conversations_join(channel=target_channel)
+            except Exception as e:
+                logger.warning(f"[MONITOR] Failed to join {target_channel}: {e}")
+            db_add_monitored_channel(db_path, target_channel, user_id)
+            slack_client.chat_postMessage(
+                channel=channel, thread_ts=thread_ts,
+                text=f":robot_face: Now monitoring <#{target_channel}>. I'll reply to questions in threads.",
+            )
+            logger.info(f"[MONITOR] Started monitoring {target_channel} by {user_id}")
+            return
+
+        if prompt_lower.startswith("stop monitoring"):
+            import re as _re
+            from shadow_ai.db import db_remove_monitored_channel
+            channel_match = _re.search(r"<#(C[A-Z0-9]+)", prompt)
+            if not channel_match:
+                slack_client.chat_postMessage(
+                    channel=channel, thread_ts=thread_ts,
+                    text="Usage: `stop monitoring #channel`",
+                )
+                return
+            target_channel = channel_match.group(1)
+            db_remove_monitored_channel(db_path, target_channel)
+            slack_client.chat_postMessage(
+                channel=channel, thread_ts=thread_ts,
+                text=f":octagonal_sign: Stopped monitoring <#{target_channel}>.",
+            )
+            logger.info(f"[MONITOR] Stopped monitoring {target_channel} by {user_id}")
+            return
+
         if prompt_lower in ("status", "bot status", "cost", "usage"):
             daily = db_get_daily_cost(db_path)
             total = db_get_total_cost(db_path)

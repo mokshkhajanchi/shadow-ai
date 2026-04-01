@@ -1,25 +1,20 @@
 """
-Slack event handlers, action handlers, and slash command handlers.
+Slack event handlers and action handlers.
 
-Extracted from bot.py: all @app.event, @app.action, @app.command decorators.
 Call ``register_events(app, ...)`` once at startup to wire everything up.
 """
 
 import logging
-import time
-
 import re
+import time
 
 from shadow_ai.config import BotConfig
 from shadow_ai.db import (
-    db_add_monitored_channel,
     db_get_daily_cost,
-    db_get_monitored_channels,
     db_get_recent_threads,
     db_get_total_cost,
     db_is_active_thread,
     db_is_monitored_channel,
-    db_remove_monitored_channel,
     db_stop_thread,
 )
 from shadow_ai.sessions import (
@@ -335,93 +330,5 @@ def register_events(
     def _handle_home_refresh(ack, body):
         ack()
         _render_app_home(body.get("user", {}).get("id"), slack_client, config)
-
-    # ── Slash commands ───────────────────────────────────────────────────
-
-    @app.command("/shadow")
-    def _handle_claude_command(ack, command, respond):
-        ack()
-        user_id = command["user_id"]
-        channel_id = command["channel_id"]
-        text = command.get("text", "").strip()
-
-        if not is_authorized(user_id, config.allowed_user_ids):
-            respond("Not authorized.", response_type="ephemeral")
-            return
-        if not text:
-            respond(
-                "Usage: `/claude <prompt>`\n"
-                "Prefixes: `opus:`, `haiku:`, `sonnet:` (model), `think:` (reasoning mode)",
-                response_type="ephemeral",
-            )
-            return
-
-        # Post visible message to create a thread anchor
-        result = slack_client.chat_postMessage(
-            channel=channel_id,
-            text=f":speech_balloon: <@{user_id}>: {text}",
-        )
-        anchor_ts = result["ts"]
-
-        # Route into the standard flow
-        handle_user_message(user_id, channel_id, anchor_ts, anchor_ts, text, **_hum_kwargs)
-
-    # ── /shadow-monitor command ────────────────────────────────────────
-
-    @app.command("/shadow-monitor")
-    def _handle_monitor_command(ack, command, respond):
-        ack()
-        if not is_authorized(command["user_id"], config.allowed_user_ids):
-            respond(":no_entry: Not authorized.", response_type="ephemeral")
-            return
-
-        text = command.get("text", "").strip()
-        user_id = command["user_id"]
-
-        # /shadow-monitor list
-        if text == "list":
-            channels = db_get_monitored_channels(db_path)
-            if not channels:
-                respond(":eyes: No channels being monitored.", response_type="ephemeral")
-            else:
-                channel_list = "\n".join(f"• <#{c}>" for c in channels)
-                respond(f":eyes: *Monitored channels:*\n{channel_list}", response_type="ephemeral")
-            return
-
-        # /shadow-monitor stop <#channel>
-        if text.startswith("stop"):
-            channel_match = re.search(r"<#(C[A-Z0-9]+)", text)
-            if not channel_match:
-                respond("Usage: `/shadow-monitor stop #channel`", response_type="ephemeral")
-                return
-            channel_id = channel_match.group(1)
-            db_remove_monitored_channel(db_path, channel_id)
-            respond(f":octagonal_sign: Stopped monitoring <#{channel_id}>.", response_type="ephemeral")
-            logger.info(f"[MONITOR] Stopped monitoring {channel_id} by {user_id}")
-            return
-
-        # /shadow-monitor <#channel>
-        channel_match = re.search(r"<#(C[A-Z0-9]+)", text)
-        if not channel_match:
-            respond(
-                "*Usage:*\n"
-                "• `/shadow-monitor #channel` — start monitoring\n"
-                "• `/shadow-monitor stop #channel` — stop monitoring\n"
-                "• `/shadow-monitor list` — show monitored channels",
-                response_type="ephemeral",
-            )
-            return
-
-        channel_id = channel_match.group(1)
-
-        # Join the channel so the bot receives message events
-        try:
-            slack_client.conversations_join(channel=channel_id)
-        except Exception as e:
-            logger.warning(f"[MONITOR] Failed to join channel {channel_id}: {e}")
-
-        db_add_monitored_channel(db_path, channel_id, user_id)
-        respond(f":robot_face: Now monitoring <#{channel_id}>. I'll reply to questions in threads.", response_type="ephemeral")
-        logger.info(f"[MONITOR] Started monitoring {channel_id} by {user_id}")
 
     logger.info("[EVENTS] All Slack event/action/command handlers registered")
