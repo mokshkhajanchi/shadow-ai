@@ -205,7 +205,11 @@ def register_events(
 
     @app.event("message")
     def _handle_message(event, say):
-        if event.get("bot_id") or event.get("user") == bot_user_id:
+        # Ignore messages from the bot itself
+        if event.get("user") == bot_user_id:
+            return
+        # Ignore messages from other bots (but allow user-token messages that have bot_id)
+        if event.get("bot_id") and not event.get("user"):
             return
         if event.get("subtype"):
             return
