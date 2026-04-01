@@ -224,11 +224,28 @@ def _process_message(
             thinking_override = "enabled"
             prompt = prompt[len("think:"):].strip()
 
-        # Monitored channel: use haiku, add context
+        # Monitored channel: use haiku, add context + channel rules
         if monitored and not model_override:
             model_override = "haiku"
         if monitored:
-            prompt = (
+            # Load per-channel rules if they exist
+            channel_rules = ""
+            from shadow_ai.db import db_get_channel_name
+            channel_name = db_get_channel_name(db_path, channel)
+            if channel_name:
+                from pathlib import Path as _Path
+                rules_file = _Path(config.claude_work_dir).expanduser() / "knowledge" / "channels" / f"{channel_name}.md"
+                if not rules_file.exists():
+                    # Also check relative to cwd
+                    rules_file = _Path("knowledge") / "channels" / f"{channel_name}.md"
+                if rules_file.exists():
+                    try:
+                        channel_rules = rules_file.read_text(encoding="utf-8").strip()
+                        logger.info(f"[MONITOR] Loaded rules for #{channel_name} ({len(channel_rules)} chars)")
+                    except Exception:
+                        pass
+
+            monitor_prefix = (
                 "[MONITORED CHANNEL — READ-ONLY MODE]\n"
                 "You are monitoring this Slack channel and auto-replying.\n"
                 "Reply helpfully and concisely. If the message doesn't need a response "
@@ -240,8 +257,10 @@ def _process_message(
                 "- NEVER expose full file paths from the host machine\n"
                 "- If asked for sensitive data, decline politely\n"
                 "- You have read-only access — you cannot modify files or run commands\n\n"
-                + prompt
             )
+            if channel_rules:
+                monitor_prefix += f"CHANNEL RULES:\n{channel_rules}\n\n"
+            prompt = monitor_prefix + prompt
 
         # ── Build helpers that bind config/deps for command functions ──
         def _send_response(ch, ts, resp):
@@ -314,7 +333,8 @@ def _process_message(
         if prompt_lower.startswith("monitor "):
             import re as _re
             from shadow_ai.db import db_add_monitored_channel
-            channel_match = _re.search(r"<#([CG][A-Z0-9]+)", prompt)
+            # Extract channel ID and name from Slack's <#C123|channel-name> format
+            channel_match = _re.search(r"<#([CG][A-Z0-9]+)\|?([^>]*)", prompt)
             if not channel_match:
                 slack_client.chat_postMessage(
                     channel=channel, thread_ts=thread_ts,
@@ -322,12 +342,13 @@ def _process_message(
                 )
                 return
             target_channel = channel_match.group(1)
+            channel_name = channel_match.group(2) or ""
             # Try to join (works for public channels, fails silently for private)
             try:
                 slack_client.conversations_join(channel=target_channel)
             except Exception as e:
                 logger.info(f"[MONITOR] Could not auto-join {target_channel} (private channel? invite bot manually): {e}")
-            db_add_monitored_channel(db_path, target_channel, user_id)
+            db_add_monitored_channel(db_path, target_channel, user_id, channel_name=channel_name)
             slack_client.chat_postMessage(
                 channel=channel, thread_ts=thread_ts,
                 text=f":robot_face: Now monitoring <#{target_channel}>. I'll reply to questions in threads.",
@@ -523,7 +544,7 @@ def _process_message(
         db_save_message(db_path, thread_ts, "assistant", response)
 
         # Monitored channel: if Claude says NO_RESPONSE, skip posting
-        if monitored and response.strip() == "NO_RESPONSE":
+        if monitored and "NO_RESPONSE" in response:
             logger.info(f"[MONITOR] Skipped reply (NO_RESPONSE) for thread={thread_ts}")
             try:
                 slack_client.reactions_remove(channel=channel, name="robot_face", timestamp=message_ts)

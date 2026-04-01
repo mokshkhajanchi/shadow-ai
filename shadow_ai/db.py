@@ -80,15 +80,21 @@ def init_db(db_path: str):
                     ON usage(created_at);
 
                 CREATE TABLE IF NOT EXISTS monitored_channels (
-                    channel_id  TEXT PRIMARY KEY,
-                    added_by    TEXT NOT NULL,
-                    created_at  TEXT NOT NULL
+                    channel_id    TEXT PRIMARY KEY,
+                    channel_name  TEXT,
+                    added_by      TEXT NOT NULL,
+                    created_at    TEXT NOT NULL
                 );
 
             """)
             # Migrate: add last_slack_ts if missing (existing DBs)
             try:
                 conn.execute("ALTER TABLE threads ADD COLUMN last_slack_ts TEXT")
+            except sqlite3.OperationalError:
+                pass
+            # Migrate: add channel_name to monitored_channels if missing
+            try:
+                conn.execute("ALTER TABLE monitored_channels ADD COLUMN channel_name TEXT")
             except sqlite3.OperationalError:
                 pass  # column already exists
             conn.commit()
@@ -274,13 +280,13 @@ def db_get_recent_threads(db_path: str, limit: int = 10) -> list[dict]:
 
 # ─── Monitored Channels ──────────────────────────────────────────────────────
 
-def db_add_monitored_channel(db_path: str, channel_id: str, user_id: str):
+def db_add_monitored_channel(db_path: str, channel_id: str, user_id: str, channel_name: str = ""):
     now = datetime.now().isoformat()
     with _db_lock:
         with _db_conn(db_path) as conn:
             conn.execute(
-                "INSERT OR REPLACE INTO monitored_channels (channel_id, added_by, created_at) VALUES (?, ?, ?)",
-                (channel_id, user_id, now),
+                "INSERT OR REPLACE INTO monitored_channels (channel_id, channel_name, added_by, created_at) VALUES (?, ?, ?, ?)",
+                (channel_id, channel_name, user_id, now),
             )
             conn.commit()
 
@@ -306,3 +312,12 @@ def db_is_monitored_channel(db_path: str, channel_id: str) -> bool:
                 "SELECT 1 FROM monitored_channels WHERE channel_id = ?", (channel_id,)
             ).fetchone()
     return row is not None
+
+
+def db_get_channel_name(db_path: str, channel_id: str) -> str:
+    with _db_lock:
+        with _db_conn(db_path) as conn:
+            row = conn.execute(
+                "SELECT channel_name FROM monitored_channels WHERE channel_id = ?", (channel_id,)
+            ).fetchone()
+    return row["channel_name"] if row and row["channel_name"] else ""

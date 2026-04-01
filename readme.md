@@ -87,6 +87,16 @@ Make the bot auto-reply to messages in a channel:
 
 The bot joins the channel, replies in threads, uses haiku (cheapest model), and skips noise messages. Each person's bot operates independently — no slash command conflicts.
 
+### Per-Channel Rules
+
+Define how the bot behaves in each channel by creating a rules file in `knowledge/channels/`:
+
+```
+knowledge/channels/my-channel.md
+```
+
+The filename must match the Slack channel name. Include guidelines, domain context, constraints — anything the bot should know when replying in that channel. See `knowledge/channels/example.md` for a template.
+
 ---
 
 ## Configuration
