@@ -366,50 +366,6 @@ def register_events(
         # Route into the standard flow
         handle_user_message(user_id, channel_id, anchor_ts, anchor_ts, text, **_hum_kwargs)
 
-    @app.command("/shadow-status")
-    def _handle_claude_status_command(ack, command, respond):
-        ack()
-        if not is_authorized(command["user_id"], config.allowed_user_ids):
-            respond("Not authorized.", response_type="ephemeral")
-            return
-
-        daily = db_get_daily_cost(db_path)
-        total = db_get_total_cost(db_path)
-        active = get_active_session_count()
-        lines = [
-            ":bar_chart: *Bot Status*",
-            f"• Active sessions: *{active}*",
-            f"• Today's cost: *${daily:.4f}*",
-        ]
-        if config.daily_budget_usd > 0:
-            remaining = max(0, config.daily_budget_usd - daily)
-            lines.append(f"• Daily budget: *${config.daily_budget_usd:.2f}* (${remaining:.4f} remaining)")
-        lines.append(f"• All-time cost: *${total:.4f}*")
-        stats = db_get_feedback_stats(db_path)
-        if stats["total_positive"] + stats["total_negative"] > 0:
-            lines.append(f"• Satisfaction: *{stats['satisfaction_pct']:.0f}%* ({stats['total_positive']} :+1:  {stats['total_negative']} :-1:)")
-        respond("\n".join(lines), response_type="ephemeral")
-
-    @app.command("/shadow-cost")
-    def _handle_claude_cost_command(ack, command, respond):
-        ack()
-        if not is_authorized(command["user_id"], config.allowed_user_ids):
-            respond("Not authorized.", response_type="ephemeral")
-            return
-
-        daily = db_get_daily_cost(db_path)
-        total = db_get_total_cost(db_path)
-        lines = [
-            ":moneybag: *Cost Summary*",
-            f"• Today: *${daily:.4f}*",
-            f"• All-time: *${total:.4f}*",
-        ]
-        if config.daily_budget_usd > 0:
-            remaining = max(0, config.daily_budget_usd - daily)
-            pct = (daily / config.daily_budget_usd * 100) if config.daily_budget_usd > 0 else 0
-            lines.append(f"• Budget: *${config.daily_budget_usd:.2f}* ({pct:.1f}% used, ${remaining:.4f} remaining)")
-        respond("\n".join(lines), response_type="ephemeral")
-
     # ── /shadow-monitor command ────────────────────────────────────────
 
     @app.command("/shadow-monitor")

@@ -62,13 +62,14 @@ Mention the bot in any Slack channel or DM, or set up channel monitoring:
 | Command | What it does |
 |---|---|
 | `@bot <message>` | Ask anything — full Claude Code access |
-| `opus: <message>` | Use Claude Opus (most capable) |
-| `haiku: <message>` | Use Claude Haiku (fastest, cheapest) |
+| `/shadow <message>` | Same as @mention, works anywhere |
+| `/shadow-monitor #channel` | Auto-reply to channel messages |
+| `opus:` / `haiku:` / `sonnet:` | Prefix to choose model |
 | `think: <message>` | Extended reasoning mode |
 | `summarize` | Recap the thread |
-| `learn` / `take note` | Save curated notes from this conversation |
+| `learn` / `take note` | Save notes from this conversation |
 | `review <PR-URL>` | Review an Azure DevOps PR |
-| `status` | Active sessions, cost, feedback stats |
+| `status` | Active sessions and cost |
 | `kill all` | Stop all sessions |
 
 ---

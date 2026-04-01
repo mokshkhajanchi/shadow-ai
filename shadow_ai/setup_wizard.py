@@ -59,8 +59,6 @@ SLACK_APP_MANIFEST = """{
     },
     "slash_commands": [
       {"command": "/shadow", "description": "Ask shadow.ai anything", "usage_hint": "[message]"},
-      {"command": "/shadow-status", "description": "Show bot status and costs"},
-      {"command": "/shadow-cost", "description": "Show daily and total costs"},
       {"command": "/shadow-monitor", "description": "Monitor a channel for auto-replies", "usage_hint": "[#channel | stop #channel | list]"}
     ]
   },
