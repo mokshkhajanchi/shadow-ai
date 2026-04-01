@@ -230,8 +230,18 @@ def _process_message(
         if monitored:
             # Load per-channel rules if they exist
             channel_rules = ""
-            from shadow_ai.db import db_get_channel_name
+            from shadow_ai.db import db_get_channel_name, db_add_monitored_channel
             channel_name = db_get_channel_name(db_path, channel)
+            # Backfill: resolve channel name from Slack API if missing in DB
+            if not channel_name:
+                try:
+                    info = slack_client.conversations_info(channel=channel)
+                    channel_name = info.get("channel", {}).get("name", "")
+                    if channel_name:
+                        db_add_monitored_channel(db_path, channel, user_id, channel_name=channel_name)
+                        logger.info(f"[MONITOR] Backfilled channel name: {channel_name} for {channel}")
+                except Exception:
+                    pass
             if channel_name:
                 from pathlib import Path as _Path
                 rules_file = _Path(config.claude_work_dir).expanduser() / "knowledge" / "channels" / f"{channel_name}.md"
