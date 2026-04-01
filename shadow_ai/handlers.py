@@ -240,8 +240,10 @@ def _process_message(
                     if channel_name:
                         db_add_monitored_channel(db_path, channel, user_id, channel_name=channel_name)
                         logger.info(f"[MONITOR] Backfilled channel name: {channel_name} for {channel}")
-                except Exception:
-                    pass
+                    else:
+                        logger.warning(f"[MONITOR] Could not resolve channel name for {channel}")
+                except Exception as e:
+                    logger.warning(f"[MONITOR] Failed to get channel info for {channel}: {e}")
             if channel_name:
                 from pathlib import Path as _Path
                 rules_file = _Path(config.claude_work_dir).expanduser() / "knowledge" / "channels" / f"{channel_name}.md"
