@@ -121,14 +121,25 @@ def extract_cost_from_log(thread_ts: str, log_file: str = "bot.log") -> tuple[fl
     return cost, duration
 
 
-def run_live_scenario(client: WebClient, channel: str, bot_user_id: str, scenario: dict) -> dict:
+def run_live_scenario(client: WebClient, channel: str, bot_user_id: str,
+                      scenario: dict, record: bool = False) -> dict:
     """Run a single scenario against the live bot."""
+    from evals.graders.golden import grade_against_golden, save_golden
+    from evals.graders.side_effects import (
+        grade_file_created, grade_file_not_modified, grade_log_contains, grade_tool_sequence,
+    )
+
     name = scenario.get("name", "unnamed")
     input_data = scenario.get("input", {})
     text = input_data.get("text", "")
     monitored = input_data.get("monitored", False)
+    expected = scenario.get("expected", {})
+    verify = scenario.get("verify", {})
 
     logger.info(f"[EVAL] Running: {name}")
+
+    # Timestamp before sending (for side-effect checks)
+    before_ts = time.time()
 
     # For non-monitored scenarios, prepend @bot mention
     if not monitored:
@@ -164,9 +175,38 @@ def run_live_scenario(client: WebClient, channel: str, bot_user_id: str, scenari
 
     # LLM-as-judge quality grading
     quality = grade_quality_with_llm(input_data["text"], response)
+    quality_scores = {}
     if quality:
         result["checks"]["llm_quality"] = quality
-        result["quality_scores"] = quality.get("scores", {})
+        quality_scores = quality.get("scores", {})
+        result["quality_scores"] = quality_scores
+
+    # Side-effect verification
+    if "file_created" in verify:
+        result["checks"].update(
+            grade_file_created(verify["file_created"]["dir"], verify["file_created"].get("pattern", "*.md"), before_ts)
+        )
+    if "file_not_modified" in verify:
+        for fp in verify["file_not_modified"]:
+            result["checks"].update(grade_file_not_modified(fp, before_ts))
+    if "log_contains" in verify:
+        result["checks"].update(grade_log_contains("bot.log", verify["log_contains"], before_ts))
+    if "tool_sequence" in verify:
+        result["checks"].update(grade_tool_sequence("bot.log", msg_ts, verify["tool_sequence"]))
+
+    # Golden comparison (or record)
+    if record:
+        save_golden(name, response, tool_calls, cost, duration, quality_scores)
+        logger.info(f"[EVAL] Recorded golden baseline for: {name}")
+    else:
+        golden_results = grade_against_golden(name, response, tool_calls, cost, quality_scores)
+        result["checks"].update(golden_results)
+
+    # Recompute passed after all checks
+    result["passed"] = all(
+        c["pass"] for c in result["checks"].values() if c.get("pass") is not None
+    )
+    result["critical_failed"] = not result["passed"] and scenario.get("severity") == "critical"
 
     result["response"] = response[:500]
     result["cost"] = cost
@@ -176,7 +216,8 @@ def run_live_scenario(client: WebClient, channel: str, bot_user_id: str, scenari
     return result
 
 
-def run_live_evals(channel: str, category: str = None, scenario_dir: str = "evals/scenarios") -> list[dict]:
+def run_live_evals(channel: str, category: str = None, record: bool = False,
+                    scenario_dir: str = "evals/scenarios") -> list[dict]:
     """Run all scenarios against the live bot."""
     client = WebClient(token=BOT_TOKEN)
     bot_user_id = get_bot_user_id(client)
@@ -185,16 +226,20 @@ def run_live_evals(channel: str, category: str = None, scenario_dir: str = "eval
     if category:
         scenarios = [s for s in scenarios if s.get("category") == category]
 
-    logger.info(f"[EVAL] Running {len(scenarios)} scenarios against live bot in <#{channel}>")
-    logger.info(f"[EVAL] Bot user: {bot_user_id}")
+    mode = "RECORD" if record else "EVAL"
+    logger.info(f"[{mode}] Running {len(scenarios)} scenarios against live bot in <#{channel}>")
+    logger.info(f"[{mode}] Bot user: {bot_user_id}")
     print()
 
     results = []
     for i, scenario in enumerate(scenarios, 1):
         print(f"  [{i}/{len(scenarios)}] {scenario.get('name', 'unnamed')}...", end=" ", flush=True)
-        result = run_live_scenario(client, channel, bot_user_id, scenario)
-        status = "✅" if result["passed"] else "❌"
-        print(status)
+        result = run_live_scenario(client, channel, bot_user_id, scenario, record=record)
+        if record:
+            print("📝 recorded")
+        else:
+            status = "✅" if result["passed"] else "❌"
+            print(status)
         results.append(result)
 
         # Brief pause between scenarios to avoid rate limiting
@@ -212,6 +257,8 @@ def main():
     parser.add_argument("--category", type=str, help="Only run scenarios in this category")
     parser.add_argument("--scenario-dir", default="evals/scenarios", help="Scenario directory")
     parser.add_argument("--dry-run", action="store_true", help="Show scenarios without sending")
+    parser.add_argument("--record", action="store_true",
+                        help="Record golden baselines (run once, then compare future runs)")
     args = parser.parse_args()
 
     if not BOT_TOKEN:
@@ -234,7 +281,7 @@ def main():
         print()
         return
 
-    results = run_live_evals(args.channel, args.category, args.scenario_dir)
+    results = run_live_evals(args.channel, args.category, record=args.record, scenario_dir=args.scenario_dir)
     print()
     print_report(results)
 

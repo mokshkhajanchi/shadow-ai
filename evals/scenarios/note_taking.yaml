@@ -7,6 +7,12 @@
     response_not_contains:
       - "error"
       - "failed"
+  verify:
+    file_created:
+      dir: "knowledge/notes"
+      pattern: "*.md"
+    log_contains:
+      - "\\[AUTO-SAVE\\]|brain|white_check_mark"
 
 - name: "remember this triggers note"
   category: note_taking
@@ -16,6 +22,10 @@
   expected:
     response_not_contains:
       - "error"
+  verify:
+    file_created:
+      dir: "knowledge/notes"
+      pattern: "*.md"
 
 - name: "take note triggers note"
   category: note_taking
