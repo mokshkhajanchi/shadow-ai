@@ -309,6 +309,12 @@ def _process_message(
                 monitor_prefix += f"CHANNEL RULES:\n{channel_rules}\n\n"
             prompt = monitor_prefix + prompt
 
+        # ── Bot commands (before normal Claude Code flow) ──
+        # Use original user text for command matching, not the monitored-prefixed prompt
+        user_text = clean_message_text(text, bot_user_id)
+        prompt_lower = user_text.strip().lower()
+        logger.info(f"[CMD] prompt_lower={prompt_lower!r}")
+
         # ── Build helpers that bind config/deps for command functions ──
         def _send_response(ch, ts, resp):
             tagline = f"\n\n_sent by {config.bot_identity}_"
@@ -346,10 +352,6 @@ def _process_message(
 
         def _db_save_usage(ts, cost):
             db_save_usage(db_path, ts, cost)
-
-        # ── Bot commands (before normal Claude Code flow) ──
-        prompt_lower = prompt.strip().lower()
-        logger.info(f"[CMD] prompt_lower={prompt_lower!r}")
 
         if prompt_lower in ("kill all sessions", "kill all", "stop all sessions", "stop all"):
             count = kill_all_sessions()
