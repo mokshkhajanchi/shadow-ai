@@ -72,13 +72,19 @@ def _is_learn_intent(text: str) -> bool:
 
     # Action + context word matching
     action_words = {"learn", "remember", "save", "note", "store", "record", "memorize", "retain"}
-    context_words = {"this", "that", "conversation", "discussion", "above", "chat", "thread", "it", "what"}
+    context_words = {"this", "that", "conversation", "discussion", "discussed", "above", "chat", "thread", "it"}
+    modifier_words = {"please", "kindly", "can", "could", "you"}
 
     words = set(t.split())
     has_action = bool(words & action_words)
     has_context = bool(words & context_words)
+    has_modifier = bool(words & modifier_words)
 
     if has_action and has_context:
+        return True
+
+    # "please remember" / "kindly save"
+    if has_action and has_modifier and len(words) <= 4:
         return True
 
     # "learn from this" / "learn from conversation"
