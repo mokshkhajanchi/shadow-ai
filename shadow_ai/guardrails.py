@@ -116,8 +116,18 @@ _COMPILED_READ = [re.compile(p) for p in BLOCKED_READ_PATTERNS]
 _COMPILED_WRITE = [re.compile(p) for p in BLOCKED_WRITE_PATTERNS]
 
 
+# Safe patterns that override blocks (e.g. cleanup of temp dirs)
+SAFE_BASH_PATTERNS = [
+    re.compile(r"^rm\s+-rf?\s+/tmp/pr-review-", re.IGNORECASE),
+]
+
+
 def _check_bash_command(command: str) -> str | None:
     """Check if a bash command is dangerous. Returns reason if blocked, None if ok."""
+    # Check safe overrides first
+    for safe in SAFE_BASH_PATTERNS:
+        if safe.search(command):
+            return None
     for pattern in _COMPILED_BASH:
         if pattern.search(command):
             return f"Blocked dangerous command pattern: {pattern.pattern}"
