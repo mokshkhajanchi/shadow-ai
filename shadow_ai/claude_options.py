@@ -149,7 +149,7 @@ def create_options(
             allowed_tools = list(getattr(config, "allowed_tools", ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "Agent"]))
         else:
             allowed_tools = ["Read", "Glob", "Grep"]
-        max_turns = getattr(config, "max_turns", 30)
+        max_turns = getattr(config, "max_turns", 100)
     else:
         allowed_tools = list(getattr(config, "allowed_tools", ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "Agent"]))
         max_turns = getattr(config, "max_turns", 30)
@@ -161,8 +161,12 @@ def create_options(
     system_prompt_file = getattr(config, "system_prompt_file", "")
 
     # Build allowed_tools: built-in tools + wildcard for every MCP server
+    # Exclude browser tools for monitored channels (security guardrail)
+    blocked_servers_for_monitored = {"claude-in-chrome", "playwright"}
     if mcp_server_names:
         for server_name in mcp_server_names:
+            if monitored and server_name in blocked_servers_for_monitored:
+                continue
             wildcard = f"mcp__{server_name}__*"
             if wildcard not in allowed_tools:
                 allowed_tools.append(wildcard)

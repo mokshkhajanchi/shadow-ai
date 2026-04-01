@@ -50,7 +50,7 @@ class TestBotConfig:
             config = BotConfig.from_env()
             assert config.allowed_user_ids == ["U123", "U456"]
             assert config.claude_work_dir == "/tmp/test"
-            assert config.max_turns == 50
+            assert config.max_turns == 50  # Explicitly set in env
             assert config.max_concurrent == 10
             assert config.daily_budget_usd == 100
             assert config.claude_model == "claude-opus-4-6"

@@ -108,7 +108,7 @@ class BotConfig:
 
     # Claude
     claude_work_dir: str = ""
-    max_turns: int = 50
+    max_turns: int = 100
     allowed_tools: list[str] = field(default_factory=lambda: [
         "Read", "Write", "Edit", "Bash", "Glob", "Grep", "Agent",
     ])
@@ -195,7 +195,7 @@ class BotConfig:
             claude_work_dir=os.path.expanduser(
                 os.environ.get("CLAUDE_WORK_DIR", "~/Projects"),
             ),
-            max_turns=int(os.environ.get("CLAUDE_MAX_TURNS", "30")),
+            max_turns=int(os.environ.get("CLAUDE_MAX_TURNS", "100")),
             allowed_tools=allowed_tools,
             permission_mode=os.environ.get("CLAUDE_PERMISSION_MODE", "acceptEdits"),
             claude_model=os.environ.get("CLAUDE_MODEL", None),

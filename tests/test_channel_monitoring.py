@@ -124,7 +124,7 @@ class TestMonitoredOptions:
             claude_work_dir=str(tmp_path),
         )
         opts = create_options(config, monitored=True)
-        assert opts.max_turns == 50  # No turn limit for monitored
+        assert opts.max_turns == 100  # Default max_turns
 
     def test_normal_full_tools(self, tmp_path):
         from shadow_ai.claude_options import create_options
