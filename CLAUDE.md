@@ -91,6 +91,16 @@ knowledge/
 
 Four tables: `threads` (thread_ts PK, channel, status), `messages` (thread_ts FK, role, content), `usage` (cost_usd, duration_ms, num_turns), `monitored_channels` (channel_id PK, added_by).
 
+## Commit Rules
+
+**Run tests before every commit. No exceptions.**
+
+```bash
+pytest tests/ -v
+```
+
+All 138+ tests must pass before committing. If any test fails, fix the code or update the test before committing.
+
 ## Configuration
 
 All via `.env` (see `.env.example`). Key vars: `BOT_USERNAME`, `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, `ALLOWED_USER_IDS`, `CLAUDE_WORK_DIR` (default ~/Projects), `CLAUDE_MAX_TURNS` (50), `DAILY_BUDGET_USD` (500), `SYSTEM_PROMPT_FILE`.
