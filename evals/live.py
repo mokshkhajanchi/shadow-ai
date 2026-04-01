@@ -34,6 +34,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 # Default test channel — override with --channel
 DEFAULT_TEST_CHANNEL = os.environ.get("EVAL_CHANNEL", "")
 BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN", "")
+USER_TOKEN = os.environ.get("EVAL_USER_TOKEN", "")
 
 # How long to wait for bot response (seconds)
 RESPONSE_TIMEOUT = 180
@@ -121,7 +122,7 @@ def extract_cost_from_log(thread_ts: str, log_file: str = "bot.log") -> tuple[fl
     return cost, duration
 
 
-def run_live_scenario(client: WebClient, channel: str, bot_user_id: str,
+def run_live_scenario(sender: WebClient, reader: WebClient, channel: str, bot_user_id: str,
                       scenario: dict, record: bool = False) -> dict:
     """Run a single scenario against the live bot."""
     from evals.graders.golden import grade_against_golden, save_golden
@@ -145,12 +146,12 @@ def run_live_scenario(client: WebClient, channel: str, bot_user_id: str,
     if not monitored:
         text = f"<@{bot_user_id}> {text}"
 
-    # Send message
-    msg_ts = send_message(client, channel, text)
+    # Send message (as user)
+    msg_ts = send_message(sender, channel, text)
     logger.info(f"[EVAL] Sent message: {msg_ts}")
 
-    # Wait for reply
-    reply = wait_for_bot_reply(client, channel, msg_ts, bot_user_id)
+    # Wait for reply (read as bot to see all messages)
+    reply = wait_for_bot_reply(reader, channel, msg_ts, bot_user_id)
 
     if reply is None:
         logger.warning(f"[EVAL] No reply received for: {name}")
@@ -219,22 +220,25 @@ def run_live_scenario(client: WebClient, channel: str, bot_user_id: str,
 def run_live_evals(channel: str, category: str = None, record: bool = False,
                     scenario_dir: str = "evals/scenarios") -> list[dict]:
     """Run all scenarios against the live bot."""
-    client = WebClient(token=BOT_TOKEN)
-    bot_user_id = get_bot_user_id(client)
+    # User token sends messages (as you), bot token reads replies
+    sender = WebClient(token=USER_TOKEN) if USER_TOKEN else WebClient(token=BOT_TOKEN)
+    reader = WebClient(token=BOT_TOKEN)
+    bot_user_id = get_bot_user_id(reader)
     scenarios = load_scenarios(scenario_dir)
 
     if category:
         scenarios = [s for s in scenarios if s.get("category") == category]
 
     mode = "RECORD" if record else "EVAL"
+    token_type = "user token" if USER_TOKEN else "bot token (⚠️ bot may ignore own messages)"
     logger.info(f"[{mode}] Running {len(scenarios)} scenarios against live bot in <#{channel}>")
-    logger.info(f"[{mode}] Bot user: {bot_user_id}")
+    logger.info(f"[{mode}] Bot user: {bot_user_id}, sending via: {token_type}")
     print()
 
     results = []
     for i, scenario in enumerate(scenarios, 1):
         print(f"  [{i}/{len(scenarios)}] {scenario.get('name', 'unnamed')}...", end=" ", flush=True)
-        result = run_live_scenario(client, channel, bot_user_id, scenario, record=record)
+        result = run_live_scenario(sender, reader, channel, bot_user_id, scenario, record=record)
         if record:
             print("📝 recorded")
         else:
@@ -264,6 +268,9 @@ def main():
     if not BOT_TOKEN:
         print("Error: SLACK_BOT_TOKEN not set in .env")
         sys.exit(1)
+    if not USER_TOKEN:
+        print("Warning: EVAL_USER_TOKEN not set in .env — using bot token (bot may ignore own messages)")
+        print("Add EVAL_USER_TOKEN=xoxp-... to .env for reliable evals\n")
 
     if not args.channel:
         print("Error: No channel specified. Use --channel C0AQ61HQ550 or set EVAL_CHANNEL in .env")
