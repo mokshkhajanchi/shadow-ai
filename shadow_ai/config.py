@@ -129,7 +129,7 @@ class BotConfig:
     knowledge_paths: list[str] = field(default_factory=list)
     knowledge_inline_threshold: int = 10_000   # 10KB per file
     knowledge_total_inline_limit: int = 20_000  # 20KB total inline budget
-    knowledge_index_max_entries: int = 100
+    knowledge_index_max_entries: int = 0  # 0 = unlimited
 
     # Budget
     daily_budget_usd: float = 500.0  # USD per day
@@ -208,7 +208,7 @@ class BotConfig:
             knowledge_paths=knowledge_paths,
             knowledge_inline_threshold=10_000,
             knowledge_total_inline_limit=20_000,
-            knowledge_index_max_entries=100,
+            knowledge_index_max_entries=0,  # 0 = unlimited
             daily_budget_usd=float(os.environ.get("DAILY_BUDGET_USD", "0")),
             gitnexus_enabled=os.environ.get("GITNEXUS_ENABLED", "auto"),
             gitnexus_available=False,

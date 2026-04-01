@@ -32,7 +32,7 @@ def _build_knowledge_index(
     paths: list[str],
     inline_threshold: int = 10_000,
     total_inline_limit: int = 20_000,
-    index_max_entries: int = 100,
+    index_max_entries: int = 0,  # 0 = unlimited
 ) -> tuple[str, str, list[str]]:
     """
     Scan knowledge paths and build:
@@ -80,11 +80,11 @@ def _build_knowledge_index(
                 inline_parts.append(f"### {display_path}\n{content}\n")
                 total_inline += size
             except Exception:
-                if len(index_entries) < index_max_entries:
+                if index_max_entries == 0 or len(index_entries) < index_max_entries:
                     desc = _get_file_description(abs_path)
                     index_entries.append((display_path, _human_size(size), desc, str(abs_path)))
         else:
-            if len(index_entries) < index_max_entries:
+            if index_max_entries == 0 or len(index_entries) < index_max_entries:
                 desc = _get_file_description(abs_path)
                 index_entries.append((display_path, _human_size(size), desc, str(abs_path)))
 
@@ -239,7 +239,7 @@ def _check_gitnexus_available() -> bool:
 
 # ─── Knowledge Index Rebuild ──────────────────────────────────────────────────
 
-def rebuild_knowledge_index(knowledge_paths, cwd, inline_threshold=10_000, total_inline_limit=20_000, index_max_entries=100, codebase_max_size=50_000, gitnexus_available=False):
+def rebuild_knowledge_index(knowledge_paths, cwd, inline_threshold=10_000, total_inline_limit=20_000, index_max_entries=0, codebase_max_size=50_000, gitnexus_available=False):
     """Rebuild the .knowledge-index.md file from current knowledge paths.
 
     Call this after saving new knowledge files so they're immediately discoverable.
