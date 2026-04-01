@@ -180,6 +180,11 @@ def create_options(
         max_buffer_size=10 * 1024 * 1024,  # 10MB (default 1MB too small for large fixtures)
     )
 
+    # Code-level guardrails for monitored channels
+    if monitored:
+        from shadow_ai.guardrails import monitored_tool_guard
+        opts.can_use_tool = monitored_tool_guard
+
     # Load agents from knowledge/agents/
     agents_dir = Path(cwd) / "knowledge" / "agents"
     agents = load_agents(agents_dir)
