@@ -4,61 +4,93 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-A Slack bot that runs Claude Code locally on macOS. Users @mention the bot in Slack threads, and it invokes Claude Code via the `claude-agent-sdk` as a subprocess with full local filesystem access. Uses Slack Socket Mode (no public URL needed).
+A Slack bot that runs Claude Code locally on macOS. Users @mention the bot in Slack threads, and it invokes Claude Code via `claude-agent-sdk` as a subprocess with full local filesystem access. Uses Slack Socket Mode (no public URL needed). This is a personal project — no Jira tickets needed for commits.
 
-## Running the Bot
+## Commands
 
 ```bash
-# Activate venv
+# Setup
+python3.11 -m venv .venv
 source .venv/bin/activate
+pip install -e ".[dev]"
 
-# Install dependencies
-pip install -r requirements.txt
+# Run
+shadow-ai              # Start the bot
+shadow-ai init         # Setup wizard (creates .env)
+shadow-ai doctor       # Check prerequisites
 
-# Run (env vars loaded from .env)
-env $(grep -v '^#' .env | xargs) python bot.py
+# Test
+pytest tests/ -v                          # All tests (138)
+pytest tests/test_note_taking.py -v       # Single file
+pytest tests/test_note_taking.py::TestIsLearnIntent -v  # Single class
+pytest tests/ -v --tb=short               # Compact output
+
+# Lint
+ruff check shadow_ai/
+ruff format shadow_ai/
 ```
-
-Required env vars: `SLACK_BOT_TOKEN` (xoxb-...), `SLACK_APP_TOKEN` (xapp-...), `ALLOWED_USER_IDS` (comma-separated Slack user IDs).
 
 ## Architecture
 
-Single-file app (`bot.py`, ~850 lines) with these layers:
+### Request Flow
+```
+Slack @mention/DM → events.py → handle_user_message() → _process_message() → invoke_claude_code()
+                                                                                    ↓
+                                                              Continue (existing session)
+                                                              Restore (from DB history)
+                                                              New (fresh session)
+```
 
-- **Slack layer**: `slack-bolt` Socket Mode. Two event handlers: `app_mention` (first contact) and `message` (follow-ups in tracked threads, DMs). Both route to `handle_user_message()` → thread pool.
-- **Concurrency**: `ThreadPoolExecutor` (default 5 workers). Per-thread locks prevent duplicate processing of the same Slack thread. Each Claude session gets its own `asyncio` event loop on a dedicated thread that stays alive for follow-up queries.
-- **Session management**: Two tiers — in-memory `active_sessions` dict holds live `ClaudeSDKClient` instances; SQLite DB (`shadow_ai.db`) persists all messages. On restart, sessions are restored from DB by replaying conversation history into a new SDK client.
-- **Claude Code integration**: Uses `claude-agent-sdk` (`ClaudeSDKClient` + `ClaudeAgentOptions`). Auto-discovers MCP servers from `~/.claude/settings.json` and project `.mcp.json`, adding wildcard tool approvals. Optional `knowledge.md` file is injected as `append_system_prompt`.
-- **Response handling**: `_collect_response()` streams all message types from the SDK, logs tool usage, and assembles text. Long responses are chunked at ~3900 chars. Every reply includes a "Stop Session" button.
+### Module Responsibilities
 
-### Key flow: `handle_user_message()` → `_process_message()` → `invoke_claude_code()`
-`invoke_claude_code()` routes to one of three paths:
-1. **Continue**: existing in-memory session → `_continue_query()`
-2. **Restore**: no session but DB history exists → `_restore_and_query()` (replays history)
-3. **New**: fresh thread → `_new_session_and_query()`
+- **`app.py`** — Entry point. Creates Slack Bolt app, initializes DB, discovers MCP servers, installs skills, starts Socket Mode listener.
+- **`events.py`** — Slack event handlers (`app_mention`, `message`, `app_home_opened`, actions). Handles channel monitoring routing and noise filtering. No slash commands — everything via @mention.
+- **`handlers.py`** — Core message processing. Bot commands (status, kill all, monitor, learn, summarize, review, test) are parsed before Claude invocation. Contains `_is_learn_intent()` for fuzzy note-taking detection.
+- **`claude_runner.py`** — Claude Code SDK lifecycle. Three paths: `_continue_query()`, `_restore_and_query()`, `_new_session_and_query()`. Each runs in a dedicated thread with its own asyncio event loop.
+- **`claude_options.py`** — Builds `ClaudeAgentOptions` with system prompt (base + custom + skills + notes), tool restrictions (read-only for monitored channels), model selection, thinking mode. Loads agents and skills here.
+- **`sessions.py`** — In-memory session store. LRU eviction when `max_active_sessions` (5) is reached. Per-thread locks, SIGTERM cleanup.
+- **`db.py`** — SQLite with WAL mode. Tables: `threads`, `messages`, `usage`, `monitored_channels`. All access serialized via `_db_lock`.
+- **`knowledge.py`** — Knowledge indexing (`_build_knowledge_index`), note saving (`save_learned_knowledge`, `save_conversation`), codebase signature extraction.
+- **`agent_loader.py`** — Parses `.md` files with YAML frontmatter into `AgentDefinition` objects for the SDK.
+- **`skill_loader.py`** — Loads skills, builds skills prompt section, symlinks to `~/.claude/skills/`.
+- **`config.py`** — `BotConfig` dataclass, `from_env()` class method. All config via `.env` file.
+
+### Knowledge System
+
+```
+knowledge/
+├── agents/           # Agent .md files (bundled + custom) — loaded into SDK
+├── skills/           # Skill SKILL.md dirs (bundled + custom) — injected into system prompt
+├── notes/            # Curated notes from "learn"/"remember" commands — indexed, injected as summaries
+├── conversations/    # Auto-saved raw conversations (one file per thread, overwritten) — NOT indexed
+└── system_prompt.example.md  # Custom system prompt template
+```
+
+- `knowledge/notes/` is indexed and summaries injected into every session's system prompt
+- `knowledge/conversations/` is saved but NOT indexed (just an archive)
+- `knowledge/agents/` and `knowledge/skills/` are committed to git
+
+### Channel Monitoring
+
+- `@bot monitor #channel` starts monitoring → bot joins channel, saves to `monitored_channels` DB table
+- New messages in monitored channels pass noise filter → auto-reply in thread with **read-only tools** (Read, Glob, Grep only) and haiku model
+- Thread follow-ups require `ALLOWED_USER_IDS` authorization (full tool access)
+- Sensitive data filter in system prompt prevents leaking secrets
+
+### System Prompt Assembly (claude_options.py)
+
+```
+[Claude Code preset]
++ RESPONSE GUIDELINES (Slack formatting, MCP priority, agents/skills mention)
++ AVAILABLE SKILLS (full content of all loaded skills)
++ CUSTOM INSTRUCTIONS (from SYSTEM_PROMPT_FILE)
++ NOTES FROM PREVIOUS SESSIONS (summaries from knowledge/notes/)
+```
 
 ## SQLite Schema
 
-Two tables: `threads` (thread_ts PK, channel, status, timestamps) and `messages` (auto-increment id, thread_ts FK, role, user_id, content, timestamp). All DB access is serialized via `_db_lock`.
+Four tables: `threads` (thread_ts PK, channel, status), `messages` (thread_ts FK, role, content), `usage` (cost_usd, duration_ms, num_turns), `monitored_channels` (channel_id PK, added_by).
 
 ## Configuration
 
-All config is via env vars (see `bot.py` lines 33-53). Key ones beyond the required three: `CLAUDE_WORK_DIR` (default `~/Projects`), `CLAUDE_MAX_TURNS` (30), `CLAUDE_PERMISSION_MODE` (`acceptEdits`), `REQUEST_TIMEOUT` (600s), `MAX_CONCURRENT` (5), `KNOWLEDGE_PATHS` (comma-separated folder/file paths for knowledge base), `DAILY_BUDGET_USD` (0 = unlimited).
-
-## MANDATORY Commit Rules (NON-NEGOTIABLE)
-
-**EVERY commit MUST include a Jira ticket ID. NO EXCEPTIONS.**
-
-Format:
-```
-ID: <Jira key>; DONE: <percentage>%; HOURS: <hours>; <description>
-```
-
-Example:
-```
-ID: FPP-33282; DONE: 100%; HOURS: 1; Fix ValueError on non-integer bag_id
-```
-
-- If no Jira ticket ID is available, **ASK the user** before committing. NEVER commit without one.
-- If DONE% or HOURS are unknown, ask or default to `DONE: 100%; HOURS: 1`.
-- This applies to ALL commits — feature, fix, test, empty, everything.
+All via `.env` (see `.env.example`). Key vars: `BOT_USERNAME`, `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, `ALLOWED_USER_IDS`, `CLAUDE_WORK_DIR` (default ~/Projects), `CLAUDE_MAX_TURNS` (50), `DAILY_BUDGET_USD` (500), `SYSTEM_PROMPT_FILE`.
