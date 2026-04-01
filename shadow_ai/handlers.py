@@ -283,6 +283,7 @@ def _process_message(
 
         # ── Bot commands (before normal Claude Code flow) ──
         prompt_lower = prompt.strip().lower()
+        logger.info(f"[CMD] prompt_lower={prompt_lower!r}")
 
         if prompt_lower in ("kill all sessions", "kill all", "stop all sessions", "stop all"):
             count = kill_all_sessions()
@@ -313,7 +314,7 @@ def _process_message(
         if prompt_lower.startswith("monitor "):
             import re as _re
             from shadow_ai.db import db_add_monitored_channel
-            channel_match = _re.search(r"<#(C[A-Z0-9]+)", prompt)
+            channel_match = _re.search(r"<#([CG][A-Z0-9]+)", prompt)
             if not channel_match:
                 slack_client.chat_postMessage(
                     channel=channel, thread_ts=thread_ts,
@@ -321,10 +322,11 @@ def _process_message(
                 )
                 return
             target_channel = channel_match.group(1)
+            # Try to join (works for public channels, fails silently for private)
             try:
                 slack_client.conversations_join(channel=target_channel)
             except Exception as e:
-                logger.warning(f"[MONITOR] Failed to join {target_channel}: {e}")
+                logger.info(f"[MONITOR] Could not auto-join {target_channel} (private channel? invite bot manually): {e}")
             db_add_monitored_channel(db_path, target_channel, user_id)
             slack_client.chat_postMessage(
                 channel=channel, thread_ts=thread_ts,
@@ -336,7 +338,7 @@ def _process_message(
         if prompt_lower.startswith("stop monitoring"):
             import re as _re
             from shadow_ai.db import db_remove_monitored_channel
-            channel_match = _re.search(r"<#(C[A-Z0-9]+)", prompt)
+            channel_match = _re.search(r"<#([CG][A-Z0-9]+)", prompt)
             if not channel_match:
                 slack_client.chat_postMessage(
                     channel=channel, thread_ts=thread_ts,
