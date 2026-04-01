@@ -245,11 +245,18 @@ def _process_message(
                                    "Re-run '@bot monitor #channel' to fix.")
             if channel_name:
                 from pathlib import Path as _Path
-                rules_file = _Path(config.claude_work_dir).expanduser() / "knowledge" / "channels" / f"{channel_name}.md"
-                if not rules_file.exists():
-                    # Also check relative to cwd
-                    rules_file = _Path("knowledge") / "channels" / f"{channel_name}.md"
-                if rules_file.exists():
+                # Check multiple locations for channel rules file
+                candidates = [
+                    _Path(config.claude_work_dir).expanduser() / "knowledge" / "channels" / f"{channel_name}.md",
+                    _Path("knowledge") / "channels" / f"{channel_name}.md",
+                    _Path(__file__).parent.parent / "knowledge" / "channels" / f"{channel_name}.md",
+                ]
+                rules_file = None
+                for candidate in candidates:
+                    if candidate.exists():
+                        rules_file = candidate
+                        break
+                if rules_file:
                     try:
                         channel_rules = rules_file.read_text(encoding="utf-8").strip()
                         logger.info(f"[MONITOR] Loaded rules for #{channel_name} ({len(channel_rules)} chars)")
