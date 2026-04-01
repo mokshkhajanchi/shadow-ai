@@ -143,9 +143,13 @@ def create_options(
     from shadow_ai.skill_loader import load_skills, build_skills_prompt
 
     if monitored:
-        # Read-only tools for monitored channel auto-replies
-        allowed_tools = ["Read", "Glob", "Grep"]
-        max_turns = 5
+        # If channel rules exist, give full tools (owner defined a workflow)
+        # Otherwise, read-only for basic auto-replies
+        if getattr(config, '_has_channel_rules', False):
+            allowed_tools = list(getattr(config, "allowed_tools", ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "Agent"]))
+        else:
+            allowed_tools = ["Read", "Glob", "Grep"]
+        max_turns = getattr(config, "max_turns", 30)
     else:
         allowed_tools = list(getattr(config, "allowed_tools", ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "Agent"]))
         max_turns = getattr(config, "max_turns", 30)

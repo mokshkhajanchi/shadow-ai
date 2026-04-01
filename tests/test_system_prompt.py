@@ -113,11 +113,17 @@ class TestCreateOptions:
         assert "AVAILABLE SKILLS" in opts.system_prompt["append"]
         assert "test-skill" in opts.system_prompt["append"]
 
-    def test_monitored_restricts_tools(self, tmp_path):
+    def test_monitored_restricts_tools_without_rules(self, tmp_path):
         config = self._make_config(tmp_path)
         opts = create_options(config, monitored=True)
         assert opts.allowed_tools == ["Read", "Glob", "Grep"]
-        assert opts.max_turns == 5
+
+    def test_monitored_full_tools_with_rules(self, tmp_path):
+        config = self._make_config(tmp_path)
+        config._has_channel_rules = True
+        opts = create_options(config, monitored=True)
+        assert "Write" in opts.allowed_tools
+        assert "Bash" in opts.allowed_tools
 
     def test_normal_has_full_tools(self, tmp_path):
         config = self._make_config(tmp_path)

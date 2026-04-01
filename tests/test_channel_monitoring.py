@@ -113,7 +113,7 @@ class TestMonitoredOptions:
         assert "Bash" not in opts.allowed_tools
         assert "Agent" not in opts.allowed_tools
 
-    def test_monitored_max_turns(self, tmp_path):
+    def test_monitored_uses_default_max_turns(self, tmp_path):
         from shadow_ai.claude_options import create_options
         from shadow_ai.config import BotConfig
         config = BotConfig(
@@ -124,7 +124,7 @@ class TestMonitoredOptions:
             claude_work_dir=str(tmp_path),
         )
         opts = create_options(config, monitored=True)
-        assert opts.max_turns == 5
+        assert opts.max_turns == 50  # No turn limit for monitored
 
     def test_normal_full_tools(self, tmp_path):
         from shadow_ai.claude_options import create_options

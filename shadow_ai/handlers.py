@@ -255,8 +255,12 @@ def _process_message(
                     except Exception:
                         pass
 
+            # Set flag so create_options knows to give full tools when rules exist
+            config._has_channel_rules = bool(channel_rules)
+
+            mode_label = "FULL ACCESS" if channel_rules else "READ-ONLY MODE"
             monitor_prefix = (
-                "[MONITORED CHANNEL — READ-ONLY MODE]\n"
+                f"[MONITORED CHANNEL — {mode_label}]\n"
                 "You are monitoring this Slack channel and auto-replying.\n"
                 "Reply helpfully and concisely. If the message doesn't need a response "
                 "(it's a statement, acknowledgment, or not directed at anyone), "
@@ -266,8 +270,10 @@ def _process_message(
                 "credentials, secret files, or private configuration\n"
                 "- NEVER expose full file paths from the host machine\n"
                 "- If asked for sensitive data, decline politely\n"
-                "- You have read-only access — you cannot modify files or run commands\n\n"
             )
+            if not channel_rules:
+                monitor_prefix += "- You have read-only access — you cannot modify files or run commands\n"
+            monitor_prefix += "\n"
             if channel_rules:
                 monitor_prefix += f"CHANNEL RULES:\n{channel_rules}\n\n"
             prompt = monitor_prefix + prompt
