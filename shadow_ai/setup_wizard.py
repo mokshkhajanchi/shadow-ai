@@ -69,6 +69,7 @@ SLACK_APP_MANIFEST = """{
       "bot": [
         "app_mentions:read",
         "channels:history",
+        "channels:join",
         "channels:read",
         "chat:write",
         "commands",

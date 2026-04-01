@@ -457,6 +457,13 @@ def register_events(
             return
 
         channel_id = channel_match.group(1)
+
+        # Join the channel so the bot receives message events
+        try:
+            slack_client.conversations_join(channel=channel_id)
+        except Exception as e:
+            logger.warning(f"[MONITOR] Failed to join channel {channel_id}: {e}")
+
         db_add_monitored_channel(db_path, channel_id, user_id)
         respond(f":robot_face: Now monitoring <#{channel_id}>. I'll reply to questions in threads.", response_type="ephemeral")
         logger.info(f"[MONITOR] Started monitoring {channel_id} by {user_id}")
