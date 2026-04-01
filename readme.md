@@ -85,6 +85,8 @@ Make the bot auto-reply to messages in a channel:
 
 The bot replies in threads, uses haiku (cheapest model), and skips noise messages ("ok", "thanks", emoji-only). If a message doesn't need a response, the bot stays silent.
 
+**Security:** Auto-replies are read-only — the bot can read files but cannot modify anything or run commands. Sensitive data (API keys, tokens, .env contents) is never shared. Thread follow-ups require `ALLOWED_USER_IDS` authorization for full access.
+
 ---
 
 ## Configuration
