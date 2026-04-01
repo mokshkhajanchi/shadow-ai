@@ -560,6 +560,10 @@ def _process_message(
                 slack_client.reactions_remove(channel=channel, name="robot_face", timestamp=message_ts)
             except Exception:
                 pass
+            try:
+                slack_client.reactions_add(channel=channel, name="x", timestamp=message_ts)
+            except Exception:
+                pass
         else:
             # React check mark
             try:
