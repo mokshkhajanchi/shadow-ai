@@ -338,7 +338,7 @@ def register_events(
 
     # ── Slash commands ───────────────────────────────────────────────────
 
-    @app.command("/claude")
+    @app.command("/shadow")
     def _handle_claude_command(ack, command, respond):
         ack()
         user_id = command["user_id"]
@@ -366,7 +366,7 @@ def register_events(
         # Route into the standard flow
         handle_user_message(user_id, channel_id, anchor_ts, anchor_ts, text, **_hum_kwargs)
 
-    @app.command("/claude-status")
+    @app.command("/shadow-status")
     def _handle_claude_status_command(ack, command, respond):
         ack()
         if not is_authorized(command["user_id"], config.allowed_user_ids):
@@ -390,7 +390,7 @@ def register_events(
             lines.append(f"• Satisfaction: *{stats['satisfaction_pct']:.0f}%* ({stats['total_positive']} :+1:  {stats['total_negative']} :-1:)")
         respond("\n".join(lines), response_type="ephemeral")
 
-    @app.command("/claude-cost")
+    @app.command("/shadow-cost")
     def _handle_claude_cost_command(ack, command, respond):
         ack()
         if not is_authorized(command["user_id"], config.allowed_user_ids):
@@ -410,9 +410,9 @@ def register_events(
             lines.append(f"• Budget: *${config.daily_budget_usd:.2f}* ({pct:.1f}% used, ${remaining:.4f} remaining)")
         respond("\n".join(lines), response_type="ephemeral")
 
-    # ── /claude-monitor command ────────────────────────────────────────
+    # ── /shadow-monitor command ────────────────────────────────────────
 
-    @app.command("/claude-monitor")
+    @app.command("/shadow-monitor")
     def _handle_monitor_command(ack, command, respond):
         ack()
         if not is_authorized(command["user_id"], config.allowed_user_ids):
@@ -422,7 +422,7 @@ def register_events(
         text = command.get("text", "").strip()
         user_id = command["user_id"]
 
-        # /claude-monitor list
+        # /shadow-monitor list
         if text == "list":
             channels = db_get_monitored_channels(db_path)
             if not channels:
@@ -432,11 +432,11 @@ def register_events(
                 respond(f":eyes: *Monitored channels:*\n{channel_list}", response_type="ephemeral")
             return
 
-        # /claude-monitor stop <#channel>
+        # /shadow-monitor stop <#channel>
         if text.startswith("stop"):
             channel_match = re.search(r"<#(C[A-Z0-9]+)", text)
             if not channel_match:
-                respond("Usage: `/claude-monitor stop #channel`", response_type="ephemeral")
+                respond("Usage: `/shadow-monitor stop #channel`", response_type="ephemeral")
                 return
             channel_id = channel_match.group(1)
             db_remove_monitored_channel(db_path, channel_id)
@@ -444,14 +444,14 @@ def register_events(
             logger.info(f"[MONITOR] Stopped monitoring {channel_id} by {user_id}")
             return
 
-        # /claude-monitor <#channel>
+        # /shadow-monitor <#channel>
         channel_match = re.search(r"<#(C[A-Z0-9]+)", text)
         if not channel_match:
             respond(
                 "*Usage:*\n"
-                "• `/claude-monitor #channel` — start monitoring\n"
-                "• `/claude-monitor stop #channel` — stop monitoring\n"
-                "• `/claude-monitor list` — show monitored channels",
+                "• `/shadow-monitor #channel` — start monitoring\n"
+                "• `/shadow-monitor stop #channel` — stop monitoring\n"
+                "• `/shadow-monitor list` — show monitored channels",
                 response_type="ephemeral",
             )
             return

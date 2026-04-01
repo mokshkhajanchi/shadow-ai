@@ -78,9 +78,9 @@ Mention the bot in any Slack channel or DM, or set up channel monitoring:
 Make the bot auto-reply to messages in a channel:
 
 ```
-/claude-monitor #channel       — start monitoring
-/claude-monitor stop #channel  — stop monitoring
-/claude-monitor list           — show monitored channels
+/shadow-monitor #channel       — start monitoring
+/shadow-monitor stop #channel  — stop monitoring
+/shadow-monitor list           — show monitored channels
 ```
 
 The bot replies in threads, uses haiku (cheapest model), and skips noise messages ("ok", "thanks", emoji-only). If a message doesn't need a response, the bot stays silent.
