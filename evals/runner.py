@@ -118,8 +118,9 @@ def main():
     args = parser.parse_args()
 
     if args.live:
-        print("Live mode not yet implemented. Use recorded mode.")
-        sys.exit(1)
+        from evals.live import main as live_main
+        live_main()
+        return
 
     results = run_recorded_evals(args.scenario_dir)
     if args.category:

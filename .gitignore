@@ -20,6 +20,9 @@ build/
 bot.log
 bot.log.*
 
+# Eval results
+evals/results/
+
 # Generated at runtime
 .knowledge-index.md
 knowledge.md

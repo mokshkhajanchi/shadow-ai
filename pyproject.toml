@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0", "pytest-asyncio", "pytest-cov", "ruff"]
+dev = ["pytest>=7.0", "pytest-asyncio", "pytest-cov", "ruff", "pyyaml>=6.0"]
 
 [project.scripts]
 shadow-ai = "shadow_ai.cli:main"
