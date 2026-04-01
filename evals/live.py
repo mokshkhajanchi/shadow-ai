@@ -58,12 +58,13 @@ def send_message(client: WebClient, channel: str, text: str, thread_ts: str = No
 
 def wait_for_bot_reply(client: WebClient, channel: str, thread_ts: str, bot_user_id: str,
                        timeout: int = RESPONSE_TIMEOUT) -> dict | None:
-    """Poll a Slack thread for the bot's reply.
+    """Poll a Slack thread for the bot's final reply.
 
-    Returns dict with: text, ts, tool_summary (from reactions/context)
+    Skips progress messages (Working...) and waits for the actual response.
+    Returns dict with: text, ts, blocks
     """
     start = time.time()
-    seen_ts = set()
+    last_bot_msg = None
 
     while time.time() - start < timeout:
         try:
@@ -71,17 +72,39 @@ def wait_for_bot_reply(client: WebClient, channel: str, thread_ts: str, bot_user
             messages = resp.get("messages", [])
 
             for msg in messages:
-                if msg.get("ts") in seen_ts:
+                # Skip the original message
+                if msg["ts"] == thread_ts:
                     continue
-                seen_ts.add(msg["ts"])
+                # Only look at bot messages
+                if not msg.get("bot_id"):
+                    continue
 
-                # Check if this is a bot reply (not the original message)
-                if msg.get("bot_id") and msg["ts"] != thread_ts:
-                    return {
-                        "text": msg.get("text", ""),
-                        "ts": msg["ts"],
-                        "blocks": msg.get("blocks", []),
-                    }
+                text = msg.get("text", "")
+                # Skip progress messages (Working..., Taking a look...)
+                if "Working..." in text or "Taking a look" in text:
+                    continue
+                # Skip empty messages
+                if not text.strip():
+                    continue
+
+                last_bot_msg = {
+                    "text": text,
+                    "ts": msg["ts"],
+                    "blocks": msg.get("blocks", []),
+                }
+
+            # If we found a real reply, wait a bit more for edits then return
+            if last_bot_msg:
+                time.sleep(5)  # Wait for message to be fully posted/edited
+                # Re-fetch to get the latest version (bot may edit the message)
+                resp2 = client.conversations_replies(channel=channel, ts=thread_ts, limit=50)
+                for msg in resp2.get("messages", []):
+                    if msg.get("ts") == last_bot_msg["ts"]:
+                        last_bot_msg["text"] = msg.get("text", "")
+                        last_bot_msg["blocks"] = msg.get("blocks", [])
+                        break
+                return last_bot_msg
+
         except Exception as e:
             logger.warning(f"Poll error: {e}")
 
