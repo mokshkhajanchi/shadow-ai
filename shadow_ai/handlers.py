@@ -593,7 +593,8 @@ def _process_message(
         db_save_message(db_path, thread_ts, "assistant", response)
 
         # Monitored channel: if Claude says NO_RESPONSE, skip posting
-        if monitored and "NO_RESPONSE" in response:
+        # Only suppress if the response is essentially just "NO_RESPONSE" (< 50 chars)
+        if monitored and "NO_RESPONSE" in response and len(response.strip()) < 50:
             logger.info(f"[MONITOR] Skipped reply (NO_RESPONSE) for thread={thread_ts}")
             try:
                 slack_client.reactions_remove(channel=channel, name="robot_face", timestamp=message_ts)
