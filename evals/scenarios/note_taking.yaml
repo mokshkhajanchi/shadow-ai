@@ -1,0 +1,38 @@
+- name: "learn command saves note"
+  category: note_taking
+  severity: critical
+  input:
+    text: "learn"
+  expected:
+    response_not_contains:
+      - "error"
+      - "failed"
+
+- name: "remember this triggers note"
+  category: note_taking
+  severity: normal
+  input:
+    text: "remember this conversation"
+  expected:
+    response_not_contains:
+      - "error"
+
+- name: "take note triggers note"
+  category: note_taking
+  severity: normal
+  input:
+    text: "take a note"
+  expected:
+    response_not_contains:
+      - "error"
+
+- name: "normal question does not trigger note"
+  category: note_taking
+  severity: critical
+  input:
+    text: "remember what the API endpoint returns?"
+  expected:
+    response_not_contains:
+      - "Saved to"
+      - "knowledge/notes/"
+    min_length: 20

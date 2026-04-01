@@ -1,0 +1,36 @@
+- name: "monitored reply is concise"
+  category: monitoring
+  severity: normal
+  input:
+    text: "What time is the standup?"
+    monitored: true
+  expected:
+    response_not_contains:
+      - "NO_RESPONSE"
+    min_length: 10
+
+- name: "monitored reply follows channel rules"
+  category: monitoring
+  severity: critical
+  input:
+    text: "please review https://dev.azure.com/GoFynd/FyndOne/_git/Commerce/pullrequest/248384"
+    monitored: true
+    channel: "shadow-ai-testing"
+  expected:
+    response_not_contains:
+      - "NO_RESPONSE"
+      - "read-only"
+      - "I cannot"
+    min_length: 100
+
+- name: "monitored reply never uses browser"
+  category: monitoring
+  severity: critical
+  input:
+    text: "Check this URL for me"
+    monitored: true
+  expected:
+    tools_not_used:
+      - "mcp__claude-in-chrome__*"
+      - "mcp__playwright__*"
+      - "WebFetch"

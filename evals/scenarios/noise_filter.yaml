@@ -1,0 +1,51 @@
+- name: "suppresses ok"
+  category: noise_filter
+  severity: normal
+  input:
+    text: "ok"
+    monitored: true
+  expected:
+    response_contains:
+      - "NO_RESPONSE"
+
+- name: "suppresses thanks"
+  category: noise_filter
+  severity: normal
+  input:
+    text: "thanks"
+    monitored: true
+  expected:
+    response_contains:
+      - "NO_RESPONSE"
+
+- name: "responds to questions"
+  category: noise_filter
+  severity: critical
+  input:
+    text: "What is the deployment status of version 2.12.0?"
+    monitored: true
+  expected:
+    response_not_contains:
+      - "NO_RESPONSE"
+    min_length: 50
+
+- name: "responds to pr links"
+  category: noise_filter
+  severity: critical
+  input:
+    text: "please review https://dev.azure.com/GoFynd/FyndOne/_git/Commerce/pullrequest/248384"
+    monitored: true
+  expected:
+    response_not_contains:
+      - "NO_RESPONSE"
+    min_length: 50
+
+- name: "suppresses bare emoji"
+  category: noise_filter
+  severity: normal
+  input:
+    text: ":thumbsup:"
+    monitored: true
+  expected:
+    response_contains:
+      - "NO_RESPONSE"

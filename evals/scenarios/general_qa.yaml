@@ -1,0 +1,40 @@
+- name: "answers codebase questions"
+  category: general_qa
+  severity: normal
+  input:
+    text: "What is this project about?"
+  expected:
+    response_contains:
+      - "Slack"
+    min_length: 50
+    response_not_contains:
+      - "I don't know"
+
+- name: "uses slack formatting"
+  category: general_qa
+  severity: normal
+  input:
+    text: "List the main features of this bot"
+  expected:
+    min_length: 100
+    response_not_contains:
+      - "# "  # No markdown headers in Slack
+
+- name: "respects model prefix"
+  category: general_qa
+  severity: normal
+  input:
+    text: "opus: explain the architecture"
+  expected:
+    min_length: 100
+
+- name: "direct answer no preamble"
+  category: general_qa
+  severity: normal
+  input:
+    text: "How many MCP servers are configured?"
+  expected:
+    response_not_contains:
+      - "I'd be happy to help"
+      - "Sure, I can"
+      - "Of course!"
