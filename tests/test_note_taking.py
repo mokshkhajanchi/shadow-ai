@@ -142,7 +142,14 @@ class TestNoteSummaryInjection:
         assert "SAVED NOTES" in prompt_text
         assert "Test Topic" in prompt_text
 
-    def test_no_notes_no_section(self, tmp_path):
+    def test_notes_include_full_content(self, tmp_path):
+        """Notes should be injected with FULL content, not summaries."""
+        notes_dir = tmp_path / "knowledge" / "notes"
+        notes_dir.mkdir(parents=True)
+        (notes_dir / "test.md").write_text(
+            "# Learned: Rate Limit\nDate: 2026-04-02\n\n"
+            "**User**: The API rate limit is 100 requests per minute. Remember this."
+        )
         from shadow_ai.claude_options import create_options
         from shadow_ai.config import BotConfig
         config = BotConfig(
@@ -154,4 +161,4 @@ class TestNoteSummaryInjection:
         )
         opts = create_options(config)
         prompt_text = opts.system_prompt["append"]
-        assert "SAVED NOTES" not in prompt_text
+        assert "100 requests per minute" in prompt_text

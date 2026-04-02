@@ -172,14 +172,23 @@ def create_options(
         from shadow_ai.guardrails import monitored_tool_guard
         opts.can_use_tool = monitored_tool_guard
 
-    # Load agents from knowledge/agents/
-    agents_dir = Path(cwd) / "knowledge" / "agents"
+    # Load agents from knowledge/agents/ (check multiple locations)
+    repo_root = Path(__file__).parent.parent
+    agents_dir = next((d for d in [
+        Path(cwd) / "knowledge" / "agents",
+        Path.cwd() / "knowledge" / "agents",
+        repo_root / "knowledge" / "agents",
+    ] if d.is_dir()), Path(cwd) / "knowledge" / "agents")
     agents = load_agents(agents_dir)
     if agents:
         opts.agents = agents
 
-    # Load skills from knowledge/skills/
-    skills_dir = Path(cwd) / "knowledge" / "skills"
+    # Load skills from knowledge/skills/ (check multiple locations)
+    skills_dir = next((d for d in [
+        Path(cwd) / "knowledge" / "skills",
+        Path.cwd() / "knowledge" / "skills",
+        repo_root / "knowledge" / "skills",
+    ] if d.is_dir()), Path(cwd) / "knowledge" / "skills")
     loaded_skills = load_skills(skills_dir)
 
     # Model selection: inline override > env var > SDK default
@@ -220,10 +229,14 @@ def create_options(
         )
 
     # Inline FULL notes from knowledge/notes/ into system prompt
-    # Full content is critical — summaries cause hallucination because Claude
-    # sees the topic but not the actual content, then guesses
-    notes_dir = os.path.join(cwd, "knowledge", "notes")
-    if os.path.isdir(notes_dir):
+    # Check multiple locations: CLAUDE_WORK_DIR, cwd, repo root
+    notes_candidates = [
+        os.path.join(cwd, "knowledge", "notes"),
+        os.path.join(os.getcwd(), "knowledge", "notes"),
+        os.path.join(str(Path(__file__).parent.parent), "knowledge", "notes"),
+    ]
+    notes_dir = next((d for d in notes_candidates if os.path.isdir(d)), "")
+    if notes_dir:
         note_parts = []
         total_size = 0
         max_notes_size = 100_000  # 100KB budget — notes are the most important context
