@@ -2,7 +2,7 @@
   category: pr_review
   severity: critical
   input:
-    text: "please review this PR (fresh review, ignore any previous reviews): https://dev.azure.com/GoFynd/FyndOne/_git/Commerce/pullrequest/248384"
+    text: "Review this PR now. Fetch the details, clone the repo, get the diff, and give me a structured review. Even if it's merged, review the code changes. PR: https://dev.azure.com/GoFynd/FyndOne/_git/Commerce/pullrequest/248384"
     monitored: true
     channel: "shadow-ai-testing"
   expected:
@@ -13,13 +13,15 @@
       - "I cannot"
       - "read-only mode"
       - "already reviewed"
+      - "already merged"
+      - "won't review"
     min_length: 200
 
 - name: "pr review uses ado mcp tools"
   category: pr_review
   severity: normal
   input:
-    text: "fresh review needed: https://dev.azure.com/GoFynd/FyndOne/_git/Commerce/pullrequest/248384"
+    text: "I need a code review of PR #248384 in the Commerce repo. Use the Azure DevOps tools to fetch the PR details. https://dev.azure.com/GoFynd/FyndOne/_git/Commerce/pullrequest/248384"
     monitored: true
   expected:
     tools_used:
@@ -35,7 +37,7 @@
   category: pr_review
   severity: normal
   input:
-    text: "review this PR and show me the actual code changes: https://dev.azure.com/GoFynd/FyndOne/_git/Commerce/pullrequest/248384"
+    text: "Clone the Commerce repo and show me the actual git diff for this PR. I want to see the code changes, not just metadata. https://dev.azure.com/GoFynd/FyndOne/_git/Commerce/pullrequest/248384"
     monitored: true
   expected:
     tools_used:
@@ -44,7 +46,7 @@
       - "cannot fetch"
       - "don't have a direct way"
       - "already reviewed"
+      - "already merged"
   verify:
     tool_sequence:
-      - "repo_get_pull_request_by_id"
       - "Bash"

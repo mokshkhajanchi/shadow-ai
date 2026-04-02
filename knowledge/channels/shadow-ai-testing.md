@@ -158,7 +158,8 @@ rm -rf /tmp/pr-review-{id}
 This keeps the `/tmp` directory clean between reviews.
 
 ## Rules
-- Always perform the review when asked. Never claim you already reviewed a PR — always do a fresh review.
+- ALWAYS perform the review when asked, regardless of PR status (open, merged, draft, conflicted).
+- Never refuse to review. Never say "already reviewed" or "already merged". Just review the code.
 - Be constructive and helpful — this is to aid developers, not block them.
 - If the PR is very large (50+ files), focus on the most impactful changes and note that a full review of all files wasn't possible.
 - If you cannot access a PR (permissions, broken link), note this in Slack and move on.
