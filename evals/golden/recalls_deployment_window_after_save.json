@@ -1,0 +1,8 @@
+{
+  "name": "recalls deployment window after save",
+  "response": ":hourglass: Still processing your previous message. Please wait...",
+  "tool_calls": [],
+  "cost": 0,
+  "duration": 0,
+  "quality_scores": {}
+}

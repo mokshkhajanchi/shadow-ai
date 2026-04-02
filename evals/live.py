@@ -80,8 +80,8 @@ def wait_for_bot_reply(client: WebClient, channel: str, thread_ts: str, bot_user
                     continue
 
                 text = msg.get("text", "")
-                # Skip progress messages (Working..., Taking a look...)
-                if "Working..." in text or "Taking a look" in text:
+                # Skip progress/busy messages
+                if "Working..." in text or "Taking a look" in text or ":hourglass:" in text:
                     continue
                 # Skip empty messages
                 if not text.strip():

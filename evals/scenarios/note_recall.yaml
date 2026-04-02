@@ -7,7 +7,7 @@
   steps:
     - action: "save"
       text: "The deployment window is every Tuesday from 2 PM to 4 PM IST. Remember this."
-      wait: 10
+      wait: 20
     - action: "recall"
       text: "When is the deployment window?"
   expected:

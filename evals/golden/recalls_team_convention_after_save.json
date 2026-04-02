@@ -1,0 +1,8 @@
+{
+  "name": "recalls team convention after save",
+  "response": "Based on our team convention (noted multiple times): always use the `feature/` prefix for branch names.  _sent by shadow.ai_",
+  "tool_calls": [],
+  "cost": 0,
+  "duration": 0,
+  "quality_scores": {}
+}
