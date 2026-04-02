@@ -2,7 +2,7 @@
   category: pr_review
   severity: critical
   input:
-    text: "please review: https://dev.azure.com/GoFynd/FyndOne/_git/Commerce/pullrequest/248384"
+    text: "please review this PR (fresh review, ignore any previous reviews): https://dev.azure.com/GoFynd/FyndOne/_git/Commerce/pullrequest/248384"
     monitored: true
     channel: "shadow-ai-testing"
   expected:
@@ -12,13 +12,14 @@
       - "NO_RESPONSE"
       - "I cannot"
       - "read-only mode"
+      - "already reviewed"
     min_length: 200
 
 - name: "pr review uses ado mcp tools"
   category: pr_review
   severity: normal
   input:
-    text: "review this PR https://dev.azure.com/GoFynd/FyndOne/_git/Commerce/pullrequest/248384"
+    text: "fresh review needed: https://dev.azure.com/GoFynd/FyndOne/_git/Commerce/pullrequest/248384"
     monitored: true
   expected:
     tools_used:
@@ -34,7 +35,7 @@
   category: pr_review
   severity: normal
   input:
-    text: "please review PR 248384"
+    text: "review this PR and show me the actual code changes: https://dev.azure.com/GoFynd/FyndOne/_git/Commerce/pullrequest/248384"
     monitored: true
   expected:
     tools_used:
@@ -42,6 +43,7 @@
     response_not_contains:
       - "cannot fetch"
       - "don't have a direct way"
+      - "already reviewed"
   verify:
     tool_sequence:
       - "repo_get_pull_request_by_id"

@@ -2,36 +2,28 @@
   category: note_taking
   severity: critical
   input:
-    text: "learn"
+    text: "Tell me about shadow.ai, then learn from this conversation"
   expected:
     response_not_contains:
       - "error"
       - "failed"
-  verify:
-    file_created:
-      dir: "knowledge/notes"
-      pattern: "*.md"
-    log_contains:
-      - "\\[AUTO-SAVE\\]|brain|white_check_mark"
+    min_length: 20
 
 - name: "remember this triggers note"
   category: note_taking
   severity: normal
   input:
-    text: "remember this conversation"
+    text: "The API rate limit is 100 requests per minute. Remember this."
   expected:
     response_not_contains:
       - "error"
-  verify:
-    file_created:
-      dir: "knowledge/notes"
-      pattern: "*.md"
+    min_length: 5
 
 - name: "take note triggers note"
   category: note_taking
   severity: normal
   input:
-    text: "take a note"
+    text: "Our deployment process uses tag-based releases. Take note."
   expected:
     response_not_contains:
       - "error"

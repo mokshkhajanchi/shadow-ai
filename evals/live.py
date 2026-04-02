@@ -177,6 +177,20 @@ def run_live_scenario(sender: WebClient, reader: WebClient, channel: str, bot_us
     reply = wait_for_bot_reply(reader, channel, msg_ts, bot_user_id)
 
     if reply is None:
+        # Check if no-reply is expected (noise filter scenarios with empty response_contains)
+        expected_contains = expected.get("response_contains", None)
+        no_reply_expected = (expected_contains is not None and len(expected_contains) == 0
+                            and "response_not_contains" not in expected
+                            and "min_length" not in expected)
+        if no_reply_expected:
+            logger.info(f"[EVAL] No reply (expected — noise filtered): {name}")
+            return {
+                "name": name,
+                "category": scenario.get("category", "unknown"),
+                "severity": scenario.get("severity", "normal"),
+                "passed": True,
+                "checks": {"no_reply_expected": {"pass": True, "detail": "No reply (correctly suppressed by noise filter)"}},
+            }
         logger.warning(f"[EVAL] No reply received for: {name}")
         return {
             "name": name,

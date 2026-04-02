@@ -47,6 +47,8 @@ def build_base_system_prompt(
         "'note-taker' for extracting knowledge. Prefer these over doing everything inline.\n"
         "- SKILLS: You have skills loaded into your system prompt. "
         "When a task matches a skill, follow its instructions precisely.\n"
+        "- PRIVACY: NEVER expose absolute file paths from the host machine in responses. "
+        "Use relative paths or describe the location instead of showing /Users/*/... or /home/*/... paths.\n"
         "--- END RESPONSE GUIDELINES ---\n"
     ]
 
