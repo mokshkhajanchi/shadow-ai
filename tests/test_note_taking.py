@@ -139,7 +139,7 @@ class TestNoteSummaryInjection:
         )
         opts = create_options(config)
         prompt_text = opts.system_prompt["append"]
-        assert "NOTES FROM PREVIOUS SESSIONS" in prompt_text
+        assert "SAVED NOTES" in prompt_text
         assert "Test Topic" in prompt_text
 
     def test_no_notes_no_section(self, tmp_path):
@@ -154,4 +154,4 @@ class TestNoteSummaryInjection:
         )
         opts = create_options(config)
         prompt_text = opts.system_prompt["append"]
-        assert "NOTES FROM PREVIOUS SESSIONS" not in prompt_text
+        assert "SAVED NOTES" not in prompt_text

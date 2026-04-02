@@ -28,6 +28,14 @@ def build_base_system_prompt(
         (none currently — kept for future per-instance overrides)
     """
     parts = [
+        "\n\n--- YOUR IDENTITY ---\n"
+        "You are shadow.ai — a Slack bot that runs Claude Code on the user's local machine.\n"
+        "You provide: Slack integration, MCP tool access, knowledge base, channel monitoring, "
+        "custom agents, and skills. You are a TOOL, not a product or platform.\n"
+        "IMPORTANT: The knowledge index and codebase files below are EXTERNAL PROJECTS the user "
+        "works on (like Avis, Mirage, Commerce). They are NOT your features. Do NOT describe "
+        "them as your capabilities. Your capabilities are listed above.\n"
+        "--- END IDENTITY ---\n"
         "\n\n--- RESPONSE GUIDELINES ---\n"
         "You are replying in a Slack thread.\n"
         "- Lead with the answer or action taken, not the process.\n"
@@ -75,13 +83,13 @@ def build_base_system_prompt(
         parts.append("--- END CODE INTELLIGENCE ---\n")
     elif knowledge_index_file:
         parts.append(
-            "\n\n--- KNOWLEDGE & CODEBASE ---\n"
-            f"A knowledge index and codebase index is saved at: {knowledge_index_file}\n"
-            "When a question relates to domain knowledge, code architecture, or you need to find "
-            "relevant files, read this index first using the Read tool. "
-            "Then use Read/Grep on the actual files listed there. "
+            "\n\n--- EXTERNAL CODEBASES & KNOWLEDGE ---\n"
+            f"A knowledge index of the user's EXTERNAL projects is at: {knowledge_index_file}\n"
+            "These are codebases the user works on — NOT your features or capabilities.\n"
+            "When a question relates to these projects, read the index using the Read tool, "
+            "then use Read/Grep on the actual files listed there. "
             "Do NOT guess — always check the index and read source files.\n"
-            "--- END KNOWLEDGE & CODEBASE ---\n"
+            "--- END EXTERNAL CODEBASES ---\n"
         )
 
     if mcp_tool_catalog:
@@ -234,12 +242,14 @@ def create_options(
             + "\n--- END CUSTOM INSTRUCTIONS ---\n"
         )
 
-    # Inline summarized notes from knowledge/notes/ into system prompt
+    # Inline FULL notes from knowledge/notes/ into system prompt
+    # Full content is critical — summaries cause hallucination because Claude
+    # sees the topic but not the actual content, then guesses
     notes_dir = os.path.join(cwd, "knowledge", "notes")
     if os.path.isdir(notes_dir):
         note_parts = []
         total_size = 0
-        max_notes_size = 50_000  # 50KB hard limit for notes
+        max_notes_size = 50_000  # 50KB budget for all notes combined
         total_notes = 0
         skipped_notes = 0
 
@@ -252,26 +262,11 @@ def create_options(
             total_notes += 1
             try:
                 content = nf.read_text(encoding="utf-8", errors="ignore").strip()
-                # Extract summary: header + source + first user msg + first assistant msg
-                lines = content.split("\n")
-                header = lines[0] if lines else nf.name
-                summary_parts = [header]
-                for line in lines[1:]:
-                    if line.startswith("Source:") or line.startswith("Updated:") or line.startswith("Date:"):
-                        summary_parts.append(line)
-                    elif line.startswith("**User**:"):
-                        summary_parts.append(line[:200])
-                        break
-                    elif line.startswith("**Assistant**:"):
-                        summary_parts.append(line[:200])
-                        break
-                summary = "\n".join(summary_parts)
-
-                if total_size + len(summary) > max_notes_size:
+                if total_size + len(content) > max_notes_size:
                     skipped_notes += 1
                     continue
-                note_parts.append(summary)
-                total_size += len(summary)
+                note_parts.append(f"### {nf.name}\n{content}")
+                total_size += len(content)
             except Exception:
                 continue
 
@@ -283,10 +278,12 @@ def create_options(
             )
 
         if note_parts:
-            logger.info(f"[NOTES] Injecting {len(note_parts)}/{total_notes} note summaries into system prompt ({total_size} chars)")
+            logger.info(f"[NOTES] Injecting {len(note_parts)}/{total_notes} notes into system prompt ({total_size} chars)")
             append_text += (
-                "\n\n--- NOTES FROM PREVIOUS SESSIONS ---\n"
-                "These are summaries of notes saved from earlier conversations. Use them as context.\n\n"
+                "\n\n--- SAVED NOTES (from previous conversations) ---\n"
+                "These notes were saved by the user. They contain facts, decisions, and context "
+                "from earlier conversations. When answering questions, check these notes FIRST — "
+                "they are authoritative. If a note contains the answer, use it directly.\n\n"
                 + "\n\n".join(note_parts)
                 + "\n--- END NOTES ---\n"
             )

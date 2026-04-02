@@ -100,7 +100,7 @@ class TestCreateOptions:
         )
         config = self._make_config(tmp_path)
         opts = create_options(config)
-        assert "NOTES FROM PREVIOUS SESSIONS" in opts.system_prompt["append"]
+        assert "SAVED NOTES" in opts.system_prompt["append"]
 
     def test_skills_injected(self, tmp_path):
         skills_dir = tmp_path / "knowledge" / "skills" / "test-skill"

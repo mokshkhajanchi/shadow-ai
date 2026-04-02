@@ -255,8 +255,12 @@ def run_live_scenario(sender: WebClient, reader: WebClient, channel: str, bot_us
 
 
 def run_live_evals(channel: str, category: str = None, record: bool = False,
-                    scenario_dir: str = "evals/scenarios") -> list[dict]:
-    """Run all scenarios against the live bot."""
+                    concurrency: int = 1, scenario_dir: str = "evals/scenarios") -> list[dict]:
+    """Run all scenarios against the live bot.
+
+    Scenarios run one at a time by default. Use --concurrency N to run N
+    scenarios in parallel (should be max_active_sessions - 2).
+    """
     # User token sends messages (as you), bot token reads replies
     sender = WebClient(token=USER_TOKEN) if USER_TOKEN else WebClient(token=BOT_TOKEN)
     reader = WebClient(token=BOT_TOKEN)
@@ -300,6 +304,8 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Show scenarios without sending")
     parser.add_argument("--record", action="store_true",
                         help="Record golden baselines (run once, then compare future runs)")
+    parser.add_argument("--concurrency", type=int, default=1,
+                        help="Number of scenarios to run in parallel (default: 1, recommended: max_sessions - 2)")
     args = parser.parse_args()
 
     if not BOT_TOKEN:
@@ -325,7 +331,8 @@ def main():
         print()
         return
 
-    results = run_live_evals(args.channel, args.category, record=args.record, scenario_dir=args.scenario_dir)
+    results = run_live_evals(args.channel, args.category, record=args.record,
+                             concurrency=args.concurrency, scenario_dir=args.scenario_dir)
     print()
     print_report(results)
 
