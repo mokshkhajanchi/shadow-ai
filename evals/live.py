@@ -164,33 +164,48 @@ def _run_multi_step_scenario(sender: WebClient, reader: WebClient, channel: str,
     for i, step in enumerate(steps):
         action = step.get("action", "message")
         text = step.get("text", "")
-        wait = step.get("wait", 5)
+        wait = step.get("wait", 15)
 
         # All steps use @mention (not monitored)
         msg_text = f"<@{bot_user_id}> {text}"
         msg_ts = send_message(sender, channel, msg_text)
         logger.info(f"[EVAL] Step {i+1}/{len(steps)} ({action}): sent {msg_ts}")
 
-        # Wait for reply
-        reply = wait_for_bot_reply(reader, channel, msg_ts, bot_user_id)
-
-        if reply:
-            response = reply["text"]
-            logger.info(f"[EVAL] Step {i+1} reply: {response[:80]}...")
-        else:
-            logger.warning(f"[EVAL] Step {i+1} no reply")
-            if action == "recall":
-                # Recall step must get a reply
-                return {
-                    "name": name, "category": scenario.get("category", "unknown"),
-                    "severity": scenario.get("severity", "normal"),
-                    "passed": False, "critical_failed": scenario.get("severity") == "critical",
-                    "checks": {"recall_replied": {"pass": False, "detail": "No reply to recall question"}},
-                }
-
-        # Wait between steps (let bot process + restart session)
-        if i < len(steps) - 1:
+        if action == "save":
+            # Save steps don't get text replies — bot just reacts with 🧠 + ✅
+            # Wait a short time for the note to be written to disk
+            logger.info(f"[EVAL] Step {i+1}: save action — waiting {wait}s for note to be written")
             time.sleep(wait)
+            # Verify the save happened by checking for reactions
+            try:
+                resp = reader.reactions_get(channel=channel, timestamp=msg_ts)
+                reactions = [r["name"] for r in resp.get("message", {}).get("reactions", [])]
+                if "brain" in reactions or "white_check_mark" in reactions:
+                    logger.info(f"[EVAL] Step {i+1}: save confirmed via reactions: {reactions}")
+                else:
+                    logger.warning(f"[EVAL] Step {i+1}: save may have failed — reactions: {reactions}")
+            except Exception:
+                pass
+        else:
+            # Non-save steps: wait for actual reply
+            reply = wait_for_bot_reply(reader, channel, msg_ts, bot_user_id)
+
+            if reply:
+                response = reply["text"]
+                logger.info(f"[EVAL] Step {i+1} reply: {response[:80]}...")
+            else:
+                logger.warning(f"[EVAL] Step {i+1} no reply")
+                if action == "recall":
+                    return {
+                        "name": name, "category": scenario.get("category", "unknown"),
+                        "severity": scenario.get("severity", "normal"),
+                        "passed": False, "critical_failed": scenario.get("severity") == "critical",
+                        "checks": {"recall_replied": {"pass": False, "detail": "No reply to recall question"}},
+                    }
+
+        # Extra pause between steps
+        if i < len(steps) - 1:
+            time.sleep(5)
 
     # Grade the LAST step's response against expected
     from evals.runner import grade_scenario
