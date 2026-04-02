@@ -20,8 +20,9 @@ build/
 bot.log
 bot.log.*
 
-# Eval results
+# Eval results and baselines (environment-specific)
 evals/results/
+evals/golden/
 
 # Generated at runtime
 .knowledge-index.md

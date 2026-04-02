@@ -1,8 +1,0 @@
-{
-  "name": "recalls API rate limit after save",
-  "response": "Based on my saved notes, the API rate limit is *100 requests per minute*.  This was recorded as a general reference \u2014 if you need specifics for a particular orders endpoint (e.g., different limits for admin vs. storefront, or per-company vs. per-user), let me know and I can dig into the codebase or docs.  _sent by shadow.ai_",
-  "tool_calls": [],
-  "cost": 0,
-  "duration": 0,
-  "quality_scores": {}
-}
