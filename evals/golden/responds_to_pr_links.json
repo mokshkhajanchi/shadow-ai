@@ -1,0 +1,19 @@
+{
+  "name": "responds to pr links",
+  "response": "I can see this PR has *already been reviewed* (thread ID 1801921 from April 1st with a detailed review). The PR itself has already been *merged* (status code 3 = merged, merge commit from March 31st).  Since this PR was reviewed and merged previously, there's nothing new to add here.  *NO_RESPONSE*  _sent by shadow.ai_",
+  "tool_calls": [
+    "repo_get_pull_request_by_id",
+    "repo_list_pull_request_threads"
+  ],
+  "cost": 0.1865,
+  "duration": 11.2,
+  "quality_scores": {
+    "accuracy": 2,
+    "completeness": 1,
+    "conciseness": 5,
+    "formatting": 3,
+    "helpfulness": 1,
+    "overall": 1,
+    "feedback": "The bot declined to review the PR citing prior review and merged status, but provided no verification, context, or actionable next steps\u2014failing to help the user despite the explicit review request."
+  }
+}

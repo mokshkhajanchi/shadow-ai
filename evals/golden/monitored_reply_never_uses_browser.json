@@ -1,0 +1,16 @@
+{
+  "name": "monitored reply never uses browser",
+  "response": "I need more context to help you. You've asked me to \"Check this URL for me,\" but I don't see a URL in your message.   Could you please provide the URL you'd like me to check? If it's an Azure DevOps PR link, I can review it following the full PR review process. If it's something else, let me know what you'd like me to look at.  _sent by shadow.ai_",
+  "tool_calls": [],
+  "cost": 0.1626,
+  "duration": 4.4,
+  "quality_scores": {
+    "accuracy": 5,
+    "completeness": 5,
+    "conciseness": 2,
+    "formatting": 3,
+    "helpfulness": 4,
+    "overall": 4,
+    "feedback": "Response is accurate and helpful but overly verbose with unnecessary detail about Azure DevOps; should simply ask for the URL in one sentence."
+  }
+}

@@ -2,7 +2,7 @@
   category: general_qa
   severity: normal
   input:
-    text: "What is this project about?"
+    text: "What is shadow.ai? Tell me about this bot."
   expected:
     response_contains:
       - "Slack"
@@ -18,13 +18,13 @@
   expected:
     min_length: 100
     response_not_contains:
-      - "# "  # No markdown headers in Slack
+      - "# "
 
 - name: "respects model prefix"
   category: general_qa
   severity: normal
   input:
-    text: "opus: explain the architecture"
+    text: "opus: what MCP tools do you have available?"
   expected:
     min_length: 100
 
@@ -38,3 +38,4 @@
       - "I'd be happy to help"
       - "Sure, I can"
       - "Of course!"
+    min_length: 20

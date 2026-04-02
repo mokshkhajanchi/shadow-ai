@@ -1,0 +1,16 @@
+{
+  "name": "respects model prefix",
+  "response": "  I need to understand what codebase you're referring to. The current working directory is `/Users/mokshkhajanchi/Projects`, which isn't a specific project.  Could you clarify: - Which project/repo do you want me to explain the architecture of? (e.g., Avis, Mirage, or a specific path) - Or did you mean the overall architecture of the Commerce monorepo?  _sent by shadow.ai_",
+  "tool_calls": [],
+  "cost": 0.1713,
+  "duration": 4.1,
+  "quality_scores": {
+    "accuracy": 4,
+    "completeness": 2,
+    "conciseness": 3,
+    "formatting": 4,
+    "helpfulness": 2,
+    "overall": 2,
+    "feedback": "Bot correctly identifies ambiguity but fails to use available context (CLAUDE.md shows this IS shadow-ai repo) and doesn't attempt to read the actual codebase to provide the requested architecture explanation."
+  }
+}

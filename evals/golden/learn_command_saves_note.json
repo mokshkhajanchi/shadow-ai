@@ -1,0 +1,16 @@
+{
+  "name": "learn command saves note",
+  "response": ":x: No conversation history found.",
+  "tool_calls": [],
+  "cost": 0.0,
+  "duration": 0.0,
+  "quality_scores": {
+    "accuracy": 2,
+    "completeness": 1,
+    "conciseness": 5,
+    "formatting": 3,
+    "helpfulness": 1,
+    "overall": 1,
+    "feedback": "The bot failed to provide any substantive response to a two-part request: it neither described shadow.ai nor captured the conversation for learning, instead returning a generic error message that doesn't address either intent."
+  }
+}

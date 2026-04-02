@@ -1,0 +1,16 @@
+{
+  "name": "take note triggers note",
+  "response": ":x: No conversation history found.",
+  "tool_calls": [],
+  "cost": 0.0,
+  "duration": 0.0,
+  "quality_scores": {
+    "accuracy": 1,
+    "completeness": 1,
+    "conciseness": 5,
+    "formatting": 2,
+    "helpfulness": 1,
+    "overall": 1,
+    "feedback": "The bot completely failed to understand the user's intent\u2014this was a statement about deployment processes (suitable for the 'learn' command), not a question requiring conversation history, resulting in a nonsensical error response."
+  }
+}

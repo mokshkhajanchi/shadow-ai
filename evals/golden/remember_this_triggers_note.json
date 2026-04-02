@@ -1,0 +1,20 @@
+{
+  "name": "remember this triggers note",
+  "response": "Saved. The API rate limit of 100 requests per minute is now in my memory and I'll reference it in future conversations.  _sent by shadow.ai_",
+  "tool_calls": [
+    "Read",
+    "Write",
+    "Write"
+  ],
+  "cost": 0.1332,
+  "duration": 12.0,
+  "quality_scores": {
+    "accuracy": 5,
+    "completeness": 5,
+    "conciseness": 5,
+    "formatting": 4,
+    "helpfulness": 5,
+    "overall": 5,
+    "feedback": "Bot correctly identified a learning request, saved the information to memory, and confirmed it with appropriate brevity\u2014minor formatting could use a code block for the rate limit value."
+  }
+}

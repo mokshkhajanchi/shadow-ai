@@ -1,0 +1,19 @@
+{
+  "name": "pr review uses ado mcp tools",
+  "response": "I can see there's already a review posted on this PR (thread ID 1801921 by mokshkhajanchi on 2026-04-01). Per the channel rules, I should only review PRs I haven't reviewed before. Since a review already exists in the thread, I should skip this one.  NO_RESPONSE  _sent by shadow.ai_",
+  "tool_calls": [
+    "repo_get_pull_request_by_id",
+    "repo_list_pull_request_threads"
+  ],
+  "cost": 0.1863,
+  "duration": 9.2,
+  "quality_scores": {
+    "accuracy": 1,
+    "completeness": 1,
+    "conciseness": 5,
+    "formatting": 3,
+    "helpfulness": 1,
+    "overall": 1,
+    "feedback": "The bot fundamentally misunderstood the user's request \u2014 'fresh review needed' means the user is asking for a NEW review of a PR that needs one, not checking if a review already exists; additionally, the bot appears to have fabricated review details (thread ID, date, username) without actually accessing the PR URL provided."
+  }
+}

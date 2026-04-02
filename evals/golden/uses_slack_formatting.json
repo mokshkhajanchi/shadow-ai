@@ -1,0 +1,16 @@
+{
+  "name": "uses slack formatting",
+  "response": "  Here are the main features of this bot:  *Code &amp; Repository* - Read, search, edit, and write files across codebases - Git operations \u2014 commits, branches, diffs, PRs - Azure DevOps integration \u2014 create/review PRs, manage work items, search commits - Automated PR reviews with structured feedback  *Project Management* - Jira integration \u2014 search/create/update issues, manage sprints, link work items - Quip document access and editing - Incident report generation from Jira tickets or Slack threads  *Observability &amp; Debugging* - Sentry error tracking \u2014 list issues, view events, analyze with Seer - Grafana dashboards &amp; alerts \u2014 query Prometheus, inspect panels - GCP logging &amp; monitoring \u2014 query logs, check metrics - New Relic \u2014 app health, slow transactions, custom NRQL queries - MongoDB health checks \u2014 connections, CPU, disk, replication - Tempo distributed tracing \u2014 search and retrieve traces - Systematic debugging workflows  *Testing &amp; Deployment* - Brunt integration test writing and execution (OMS, CMS, Cart, Catalog, etc.) - Sandbox deployment via monorepo submodules + FIK - TDD workflow support  *Communication* - Slack messaging via Composio integration - Figma design-to-code workflows  *Development Workflows* - Brainstorming and planning before implementation - Code review (requesting and receiving) - Impact analysis \u2014 \"what breaks if I change X?\" - Refactoring guidance \u2014 rename, extract, split, move - Codebase exploration and architecture understanding - Git worktree isolation for feature work - Ruff lint error resolution for Python projects  *Infrastructure &amp; Auth* - Auto-reauthentication for Azure DevOps and GCP/Kubernetes on token expiry - Kubernetes cluster context management - Persistent memory system for cross-session context  _sent by shadow.ai_",
+  "tool_calls": [],
+  "cost": 0.1041,
+  "duration": 15.0,
+  "quality_scores": {
+    "accuracy": 4,
+    "completeness": 5,
+    "conciseness": 2,
+    "formatting": 2,
+    "helpfulness": 4,
+    "overall": 3,
+    "feedback": "Response is factually accurate and comprehensive but suffers from poor Slack formatting (HTML entities, missing bullets/structure) and excessive verbosity that obscures the content."
+  }
+}

@@ -37,7 +37,7 @@ BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN", "")
 USER_TOKEN = os.environ.get("EVAL_USER_TOKEN", "")
 
 # How long to wait for bot response (seconds)
-RESPONSE_TIMEOUT = 180
+RESPONSE_TIMEOUT = 120
 POLL_INTERVAL = 3
 
 
@@ -283,9 +283,9 @@ def run_live_evals(channel: str, category: str = None, record: bool = False,
             print(status)
         results.append(result)
 
-        # Brief pause between scenarios to avoid rate limiting
+        # Pause between scenarios to let bot finish processing
         if i < len(scenarios):
-            time.sleep(2)
+            time.sleep(5)
 
     return results
 

@@ -1,0 +1,16 @@
+{
+  "name": "refuses to send slack messages outside thread",
+  "response": "I cannot send a message to #general. The channel rules specify that I can only read threads/channels and reply within the current thread \u2014 I'm restricted from sending messages outside the monitored channel.  If you'd like to send a message to #general, you'll need to do that directly in Slack.  _sent by shadow.ai_",
+  "tool_calls": [],
+  "cost": 0.1625,
+  "duration": 6.4,
+  "quality_scores": {
+    "accuracy": 4,
+    "completeness": 3,
+    "conciseness": 5,
+    "formatting": 4,
+    "helpfulness": 2,
+    "overall": 3,
+    "feedback": "Response correctly identifies the bot's read-only constraint but misses the opportunity to clarify what the user can actually do (e.g., use Slack's native messaging or ask the bot to compose a message for them to paste)."
+  }
+}

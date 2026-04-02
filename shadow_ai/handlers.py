@@ -316,7 +316,17 @@ def _process_message(
         logger.info(f"[CMD] prompt_lower={prompt_lower!r}")
 
         # ── Build helpers that bind config/deps for command functions ──
+        def _scrub_paths(text: str) -> str:
+            """Remove absolute paths from responses to prevent host info leakage."""
+            import re
+            # Replace /Users/username/... and /home/username/... with relative paths
+            text = re.sub(r'/Users/[a-zA-Z][a-zA-Z0-9._-]*/([^\s\n]*)', r'./\1', text)
+            text = re.sub(r'/home/[a-zA-Z][a-zA-Z0-9._-]*/([^\s\n]*)', r'./\1', text)
+            return text
+
         def _send_response(ch, ts, resp):
+            if monitored:
+                resp = _scrub_paths(resp)
             tagline = f"\n\n_sent by {config.bot_identity}_"
             resp = resp.rstrip() + tagline
             send_response_with_stop_button(slack_client, ch, ts, resp)
@@ -486,30 +496,43 @@ def _process_message(
         if _is_learn_intent(prompt_lower):
             from shadow_ai.knowledge import save_learned_knowledge
             slack_client.reactions_add(channel=channel, name="brain", timestamp=message_ts)
-            messages = db_get_thread_messages(db_path, thread_ts, limit=100)
 
-            if messages:
-                # Build from DB history
-                convo_parts = []
-                for msg in messages:
-                    role = "User" if msg["role"] == "user" else "Assistant"
-                    convo_parts.append(f"**{role}**: {msg['content']}")
-                convo_text = "\n\n".join(convo_parts)
+            # Check if the message itself has content to save (e.g., "The API limit is 100. Remember this.")
+            # Strip learn-intent words to get the content
+            import re as _re
+            content_text = _re.sub(
+                r'\b(learn|remember|save|note|store|record|memorize|retain|take\s+a?\s*note|please|kindly|this|that|from)\b',
+                '', user_text, flags=_re.IGNORECASE
+            ).strip().strip('.,!?:;')
+
+            if len(content_text) > 10:
+                # User included content to save — save it directly
+                convo_text = f"**User**: {user_text}"
+                topic = content_text[:50]
             else:
-                # Fallback: fetch thread messages from Slack API directly
-                convo_text, _ = fetch_thread_messages(slack_client, channel, thread_ts)
-                if not convo_text:
-                    slack_client.chat_postMessage(
-                        channel=channel, thread_ts=thread_ts,
-                        text=":x: No conversation history found.",
-                    )
-                    return
+                # No inline content — try thread history
+                messages = db_get_thread_messages(db_path, thread_ts, limit=100)
+                if messages:
+                    convo_parts = []
+                    for msg in messages:
+                        role = "User" if msg["role"] == "user" else "Assistant"
+                        convo_parts.append(f"**{role}**: {msg['content']}")
+                    convo_text = "\n\n".join(convo_parts)
+                else:
+                    # Fallback: fetch thread messages from Slack API directly
+                    convo_text, _ = fetch_thread_messages(slack_client, channel, thread_ts)
+                    if not convo_text:
+                        slack_client.chat_postMessage(
+                            channel=channel, thread_ts=thread_ts,
+                            text=":x: No conversation history found.",
+                        )
+                        return
 
             # Topic from first line of conversation text
             topic = "conversation"
             for line in convo_text.split("\n"):
                 line = line.strip()
-                if line and not line.startswith("#"):
+                if line and not line.startswith("#") and not line.startswith("**"):
                     topic = line.strip("*_#`- ").strip()[:50] or topic
                     break
 
