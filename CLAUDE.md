@@ -28,6 +28,11 @@ pytest tests/ -v --tb=short               # Compact output
 # Lint
 ruff check shadow_ai/
 ruff format shadow_ai/
+
+# Evals (see evals/README.md for details)
+pytest evals/ -v                                                    # Recorded evals (fast, free)
+python -m evals.live --channel C0AQ61HQ550 --record --concurrency 1 # Live evals (sends real Slack messages)
+python -m evals.live --channel C0AQ61HQ550 --dry-run                # Preview scenarios
 ```
 
 ## Architecture
