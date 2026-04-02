@@ -19,22 +19,17 @@ def build_base_system_prompt(
     mcp_tool_catalog: str = "",
 ) -> str:
     """
-    Build the universal portion of the system prompt — Slack formatting rules,
-    MCP tool usage instructions, "lead with answer" guidelines.
-
-    These apply regardless of which user is talking to the bot.
-
-    config keys used:
-        (none currently — kept for future per-instance overrides)
+    Build the universal portion of the system prompt — identity, guidelines,
+    and references to external resources (read on demand, not inlined).
     """
     parts = [
         "\n\n--- YOUR IDENTITY ---\n"
         "You are shadow.ai — a Slack bot that runs Claude Code on the user's local machine.\n"
-        "You provide: Slack integration, MCP tool access, knowledge base, channel monitoring, "
-        "custom agents, and skills. You are a TOOL, not a product or platform.\n"
-        "IMPORTANT: The knowledge index and codebase files below are EXTERNAL PROJECTS the user "
-        "works on (like Avis, Mirage, Commerce). They are NOT your features. Do NOT describe "
-        "them as your capabilities. Your capabilities are listed above.\n"
+        "Your capabilities: Slack messaging, MCP tool access, knowledge notes, "
+        "channel monitoring, custom agents, and skills.\n"
+        "You are NOT a platform. You do NOT have built-in Grafana, Sentry, MongoDB, "
+        "NewRelic, or database features. You ACCESS those via MCP tools when configured.\n"
+        "When asked 'what are you' or 'what can you do', describe ONLY the above capabilities.\n"
         "--- END IDENTITY ---\n"
         "\n\n--- RESPONSE GUIDELINES ---\n"
         "You are replying in a Slack thread.\n"
@@ -44,56 +39,38 @@ def build_base_system_prompt(
         "- For code changes: state what you changed, the file(s), and the PR link.\n"
         "- Skip preamble like \"I'd be happy to help\". Answer directly.\n"
         "- Use Slack formatting: *bold*, `code`, bullet points. No markdown headers (# ##).\n"
-        "- When the user asks for data from external systems, "
-        "ALWAYS use your MCP tools to fetch real data. Never guess — call the tool.\n"
-        "- URL ACCESS PRIORITY: When given a URL, ALWAYS try the relevant MCP tool first "
-        "(Azure DevOps MCP for dev.azure.com URLs, Jira MCP for atlassian.net URLs, "
-        "Sentry MCP for sentry URLs, Grafana MCP for grafana URLs, etc.). "
-        "Only use Chrome browser/WebFetch as a LAST RESORT if no MCP tool can handle the URL.\n"
-        "- AGENTS: You have specialized agents available via the Agent tool. "
-        "Use 'code-reviewer' for PR reviews, 'debugger' for tracing errors, "
-        "'note-taker' for extracting knowledge. Prefer these over doing everything inline.\n"
-        "- SKILLS: You have skills loaded into your system prompt. "
-        "When a task matches a skill, follow its instructions precisely.\n"
-        "- PRIVACY: NEVER expose absolute file paths from the host machine in responses. "
-        "Use relative paths or describe the location instead of showing /Users/*/... or /home/*/... paths.\n"
+        "- NEVER guess or hallucinate. If you don't know, say so. If you need data, use a tool to fetch it.\n"
+        "- NEVER describe tools or MCP servers as your 'features'. They are external services you can access.\n"
+        "- URL ACCESS PRIORITY: When given a URL, ALWAYS try the relevant MCP tool first. "
+        "Only use Chrome browser/WebFetch as a LAST RESORT.\n"
+        "- AGENTS: Use 'code-reviewer' for PR reviews, 'debugger' for errors, 'note-taker' for notes.\n"
+        "- SKILLS: When a task matches a skill, follow its instructions precisely.\n"
+        "- PRIVACY: NEVER expose absolute file paths (/Users/*, /home/*). Use relative paths.\n"
         "--- END RESPONSE GUIDELINES ---\n"
     ]
 
-    # GitNexus code intelligence instructions
-    if gitnexus_available:
-        parts.append(
-            "\n\n--- CODE INTELLIGENCE (GitNexus) ---\n"
-            "You have GitNexus MCP tools for deep code intelligence. ALWAYS prefer these over "
-            "Grep/Glob for understanding code architecture, tracing execution flows, and finding "
-            "symbol relationships.\n"
-            "Key tools:\n"
-            "- gitnexus_query({query: \"concept\"}) — find execution flows and related symbols\n"
-            "- gitnexus_context({name: \"symbolName\"}) — 360° view: callers, callees, processes\n"
-            "- gitnexus_impact({target: \"symbolName\", direction: \"upstream\"}) — blast radius before editing\n"
-            "- gitnexus_detect_changes({}) — pre-commit scope check\n"
-            "Use these FIRST for any code exploration or architecture question. "
-            "Fall back to Grep/Glob only if GitNexus returns no results.\n"
-        )
-        if knowledge_index_file:
+    # Reference to knowledge index (READ ON DEMAND, not inlined)
+    if knowledge_index_file:
+        if gitnexus_available:
             parts.append(
-                f"A knowledge index (docs, no code signatures) is at: {knowledge_index_file}\n"
-                "Use Read on it for domain knowledge and document references.\n"
+                "\n\n--- CODE INTELLIGENCE ---\n"
+                "You have GitNexus MCP tools for code intelligence. Use gitnexus_query, "
+                "gitnexus_context, gitnexus_impact for code exploration.\n"
+                f"Knowledge index (docs only): {knowledge_index_file} — Read it when needed.\n"
+                "--- END CODE INTELLIGENCE ---\n"
             )
-        parts.append("--- END CODE INTELLIGENCE ---\n")
-    elif knowledge_index_file:
-        parts.append(
-            "\n\n--- EXTERNAL CODEBASES & KNOWLEDGE ---\n"
-            f"A knowledge index of the user's EXTERNAL projects is at: {knowledge_index_file}\n"
-            "These are codebases the user works on — NOT your features or capabilities.\n"
-            "When a question relates to these projects, read the index using the Read tool, "
-            "then use Read/Grep on the actual files listed there. "
-            "Do NOT guess — always check the index and read source files.\n"
-            "--- END EXTERNAL CODEBASES ---\n"
-        )
+        else:
+            parts.append(
+                "\n\n--- CODEBASE REFERENCE ---\n"
+                f"The user's project files are indexed at: {knowledge_index_file}\n"
+                "Read this file ONLY when you need to look up code, files, or project structure.\n"
+                "Do NOT assume you know the codebase — always Read the index first.\n"
+                "--- END CODEBASE REFERENCE ---\n"
+            )
 
-    if mcp_tool_catalog:
-        parts.append(mcp_tool_catalog)
+    # NOTE: MCP tool catalog is intentionally NOT included in the system prompt.
+    # Claude already has the tool list from the SDK. Including it here causes
+    # hallucination (Claude describes MCP tools as its own features).
 
     return "".join(parts)
 

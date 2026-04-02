@@ -20,21 +20,22 @@ class TestBuildBaseSystemPrompt:
         assert "MCP tools" in prompt
 
     def test_gitnexus_included_when_available(self):
-        prompt = build_base_system_prompt(None, gitnexus_available=True)
-        assert "GitNexus" in prompt
+        prompt = build_base_system_prompt(None, gitnexus_available=True, knowledge_index_file="/tmp/index.md")
+        assert "gitnexus" in prompt.lower()
 
     def test_gitnexus_excluded_when_unavailable(self):
         prompt = build_base_system_prompt(None, gitnexus_available=False)
-        assert "GitNexus" not in prompt
+        assert "gitnexus" not in prompt.lower()
 
     def test_knowledge_index_included(self):
         prompt = build_base_system_prompt(None, knowledge_index_file="/path/to/index.md")
         assert "/path/to/index.md" in prompt
 
-    def test_mcp_catalog_included(self):
+    def test_mcp_catalog_not_inlined(self):
+        """MCP catalog is intentionally NOT included to prevent hallucination."""
         catalog = "\n--- MCP TOOLS ---\njira: search_issues\n--- END ---\n"
         prompt = build_base_system_prompt(None, mcp_tool_catalog=catalog)
-        assert "jira: search_issues" in prompt
+        assert "jira: search_issues" not in prompt
 
     def test_agents_mentioned(self):
         prompt = build_base_system_prompt(None)
