@@ -1,0 +1,52 @@
+# Multi-step eval: save a fact, then recall it in a new thread.
+# These scenarios have a "steps" field instead of a single "input".
+
+- name: "recalls deployment window after save"
+  category: note_recall
+  severity: critical
+  steps:
+    - action: "save"
+      text: "The deployment window is every Tuesday from 2 PM to 4 PM IST. Remember this."
+      wait: 10
+    - action: "recall"
+      text: "When is the deployment window?"
+  expected:
+    response_contains:
+      - "Tuesday"
+      - "2"
+      - "4"
+    response_not_contains:
+      - "I don't know"
+      - "not sure"
+      - "no information"
+
+- name: "recalls API rate limit after save"
+  category: note_recall
+  severity: critical
+  steps:
+    - action: "save"
+      text: "The API rate limit for the orders endpoint is 100 requests per minute. Save this."
+      wait: 10
+    - action: "recall"
+      text: "What's the API rate limit for the orders endpoint?"
+  expected:
+    response_contains:
+      - "100"
+    response_not_contains:
+      - "I don't know"
+      - "not sure"
+
+- name: "recalls team convention after save"
+  category: note_recall
+  severity: normal
+  steps:
+    - action: "save"
+      text: "Our team convention: always use feature/ prefix for branch names. Take note."
+      wait: 10
+    - action: "recall"
+      text: "What branch naming convention does our team use?"
+  expected:
+    response_contains:
+      - "feature"
+    response_not_contains:
+      - "I don't know"

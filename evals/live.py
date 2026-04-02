@@ -145,6 +145,64 @@ def extract_cost_from_log(thread_ts: str, log_file: str = "bot.log") -> tuple[fl
     return cost, duration
 
 
+def _run_multi_step_scenario(sender: WebClient, reader: WebClient, channel: str,
+                              bot_user_id: str, scenario: dict, record: bool = False) -> dict:
+    """Run a multi-step scenario (e.g., save a fact, then recall it in a new thread)."""
+    from evals.graders.golden import grade_against_golden, save_golden
+
+    name = scenario.get("name", "unnamed")
+    steps = scenario.get("steps", [])
+    expected = scenario.get("expected", {})
+
+    logger.info(f"[EVAL] Running multi-step: {name} ({len(steps)} steps)")
+
+    response = ""
+    tool_calls = []
+    cost = 0
+    duration = 0
+
+    for i, step in enumerate(steps):
+        action = step.get("action", "message")
+        text = step.get("text", "")
+        wait = step.get("wait", 5)
+
+        # All steps use @mention (not monitored)
+        msg_text = f"<@{bot_user_id}> {text}"
+        msg_ts = send_message(sender, channel, msg_text)
+        logger.info(f"[EVAL] Step {i+1}/{len(steps)} ({action}): sent {msg_ts}")
+
+        # Wait for reply
+        reply = wait_for_bot_reply(reader, channel, msg_ts, bot_user_id)
+
+        if reply:
+            response = reply["text"]
+            logger.info(f"[EVAL] Step {i+1} reply: {response[:80]}...")
+        else:
+            logger.warning(f"[EVAL] Step {i+1} no reply")
+            if action == "recall":
+                # Recall step must get a reply
+                return {
+                    "name": name, "category": scenario.get("category", "unknown"),
+                    "severity": scenario.get("severity", "normal"),
+                    "passed": False, "critical_failed": scenario.get("severity") == "critical",
+                    "checks": {"recall_replied": {"pass": False, "detail": "No reply to recall question"}},
+                }
+
+        # Wait between steps (let bot process + restart session)
+        if i < len(steps) - 1:
+            time.sleep(wait)
+
+    # Grade the LAST step's response against expected
+    from evals.runner import grade_scenario
+    result = grade_scenario(scenario, response, tool_calls, cost, duration)
+
+    if record and response:
+        save_golden(name, response, tool_calls, cost, duration)
+
+    result["response"] = response[:500]
+    return result
+
+
 def run_live_scenario(sender: WebClient, reader: WebClient, channel: str, bot_user_id: str,
                       scenario: dict, record: bool = False) -> dict:
     """Run a single scenario against the live bot."""
@@ -154,6 +212,12 @@ def run_live_scenario(sender: WebClient, reader: WebClient, channel: str, bot_us
     )
 
     name = scenario.get("name", "unnamed")
+
+    # Multi-step scenarios (save → recall)
+    steps = scenario.get("steps")
+    if steps:
+        return _run_multi_step_scenario(sender, reader, channel, bot_user_id, scenario, record)
+
     input_data = scenario.get("input", {})
     text = input_data.get("text", "")
     monitored = input_data.get("monitored", False)

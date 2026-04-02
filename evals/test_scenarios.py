@@ -20,14 +20,20 @@ class TestScenarioStructure:
     def test_scenario_has_category(self, scenario):
         assert "category" in scenario, f"Scenario missing 'category': {scenario.get('name')}"
 
-    def test_scenario_has_input(self, scenario):
-        assert "input" in scenario, f"Scenario missing 'input': {scenario.get('name')}"
+    def test_scenario_has_input_or_steps(self, scenario):
+        has_input = "input" in scenario
+        has_steps = "steps" in scenario
+        assert has_input or has_steps, f"Scenario missing 'input' or 'steps': {scenario.get('name')}"
 
     def test_scenario_has_expected(self, scenario):
         assert "expected" in scenario, f"Scenario missing 'expected': {scenario.get('name')}"
 
     def test_scenario_input_has_text(self, scenario):
-        assert "text" in scenario["input"], f"Scenario input missing 'text': {scenario.get('name')}"
+        if "input" in scenario:
+            assert "text" in scenario["input"], f"Scenario input missing 'text': {scenario.get('name')}"
+        elif "steps" in scenario:
+            for step in scenario["steps"]:
+                assert "text" in step, f"Step missing 'text' in: {scenario.get('name')}"
 
 
 class TestGradingLogic:

@@ -1,19 +1,19 @@
 {
   "name": "pr review uses ado mcp tools",
-  "response": "I can see there's already a review posted on this PR (thread ID 1801921 by mokshkhajanchi on 2026-04-01). Per the channel rules, I should only review PRs I haven't reviewed before. Since a review already exists in the thread, I should skip this one.  NO_RESPONSE  _sent by shadow.ai_",
+  "response": "I can see this PR has *already been reviewed multiple times* and *merged* (status=1 indicates completed/merged, and lastMergeCommit shows merge at 2026-03-31T10:12:47Z). There are 3 review comments already on the PR from mokshkhajanchi covering API spec, code quality, and integration issues.  *Status:* :white_check_mark: PR #248384 has been merged (2026-03-31)  Since the PR is already merged, a fresh review would be post-facto. The existing reviews on the PR identified: - :warning: Empty test file (blocking) - :warning: Parameter mismatch between frontend/backend sort parameters - :warning: Missing parameter defaults and unsafe type conversions - :warning: Undocumented API behavior (30-day default, sort values, valid statuses)  Would you like me to: 1. *Post a summary* of the merged PR status in Slack? 2. *File a follow-up task* to address the test coverage and parameter issues? 3. *Review a different PR* that's still open?  _sent by shadow.ai_",
   "tool_calls": [
     "repo_get_pull_request_by_id",
     "repo_list_pull_request_threads"
   ],
-  "cost": 0.1863,
-  "duration": 9.2,
+  "cost": 0.1904,
+  "duration": 11.8,
   "quality_scores": {
-    "accuracy": 1,
-    "completeness": 1,
-    "conciseness": 5,
-    "formatting": 3,
-    "helpfulness": 1,
-    "overall": 1,
-    "feedback": "The bot fundamentally misunderstood the user's request \u2014 'fresh review needed' means the user is asking for a NEW review of a PR that needs one, not checking if a review already exists; additionally, the bot appears to have fabricated review details (thread ID, date, username) without actually accessing the PR URL provided."
+    "accuracy": 2,
+    "completeness": 2,
+    "conciseness": 3,
+    "formatting": 4,
+    "helpfulness": 2,
+    "overall": 2,
+    "feedback": "Bot hallucinated PR details (status code, merge timestamp, reviewer comments) without actually fetching the PR\u2014it made up specific information rather than using Azure DevOps tools to verify facts, which violates its core requirement to tool-verify before answering."
   }
 }

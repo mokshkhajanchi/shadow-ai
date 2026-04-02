@@ -1,16 +1,16 @@
 {
   "name": "uses slack formatting",
-  "response": "  Here are the main features of this bot:  *Code &amp; Repository* - Read, search, edit, and write files across codebases - Git operations \u2014 commits, branches, diffs, PRs - Azure DevOps integration \u2014 create/review PRs, manage work items, search commits - Automated PR reviews with structured feedback  *Project Management* - Jira integration \u2014 search/create/update issues, manage sprints, link work items - Quip document access and editing - Incident report generation from Jira tickets or Slack threads  *Observability &amp; Debugging* - Sentry error tracking \u2014 list issues, view events, analyze with Seer - Grafana dashboards &amp; alerts \u2014 query Prometheus, inspect panels - GCP logging &amp; monitoring \u2014 query logs, check metrics - New Relic \u2014 app health, slow transactions, custom NRQL queries - MongoDB health checks \u2014 connections, CPU, disk, replication - Tempo distributed tracing \u2014 search and retrieve traces - Systematic debugging workflows  *Testing &amp; Deployment* - Brunt integration test writing and execution (OMS, CMS, Cart, Catalog, etc.) - Sandbox deployment via monorepo submodules + FIK - TDD workflow support  *Communication* - Slack messaging via Composio integration - Figma design-to-code workflows  *Development Workflows* - Brainstorming and planning before implementation - Code review (requesting and receiving) - Impact analysis \u2014 \"what breaks if I change X?\" - Refactoring guidance \u2014 rename, extract, split, move - Codebase exploration and architecture understanding - Git worktree isolation for feature work - Ruff lint error resolution for Python projects  *Infrastructure &amp; Auth* - Auto-reauthentication for Azure DevOps and GCP/Kubernetes on token expiry - Kubernetes cluster context management - Persistent memory system for cross-session context  _sent by shadow.ai_",
+  "response": "Here are the main features of <http://shadow.ai|shadow.ai>:  *Core Capabilities:* \u2022 *Slack Messaging* \u2014 Responds in Slack threads, monitors channels \u2022 *MCP Tool Access* \u2014 Connects to external services (Jira, Azure DevOps, Sentry, Grafana, MongoDB, New Relic, GCP logging, Figma, etc.) via MCP integrations \u2022 *Code Operations* \u2014 Read, write, edit, and search code in local repositories \u2022 *Custom Agents* \u2014 Specialized subagents for tasks like PR review, debugging, incident reports, test writing, and sandbox deployment \u2022 *Skills* \u2014 Slash-command workflows (`/commit`, `/azure-review`, `/kube-login`, `/azure-login`, `/quip`, etc.) \u2022 *Knowledge Notes* \u2014 Persistent file-based memory system that retains context across conversations  *Key Workflows:* \u2022 *PR Review* \u2014 Fetch and review Azure DevOps pull requests with structured feedback \u2022 *Jira Integration* \u2014 Search, create, update, and comment on Jira issues \u2022 *Incident Reports* \u2014 Generate IR documents from Jira tickets or Slack threads \u2022 *Integration Tests* \u2014 Scaffold and write Brunt test suite specs \u2022 *Sandbox Deployment* \u2014 Deploy service branches to Fynd Platform sandboxes \u2022 *Observability* \u2014 Query Grafana dashboards, Sentry errors, New Relic metrics, GCP logs, and MongoDB health \u2022 *Auto-Authentication* \u2014 Automatically re-authenticates Azure DevOps and GCP/Kubernetes when tokens expire  _sent by shadow.ai_",
   "tool_calls": [],
-  "cost": 0.1041,
-  "duration": 15.0,
+  "cost": 0.1028,
+  "duration": 11.5,
   "quality_scores": {
-    "accuracy": 4,
-    "completeness": 5,
+    "accuracy": 2,
+    "completeness": 1,
     "conciseness": 2,
-    "formatting": 2,
-    "helpfulness": 4,
-    "overall": 3,
-    "feedback": "Response is factually accurate and comprehensive but suffers from poor Slack formatting (HTML entities, missing bullets/structure) and excessive verbosity that obscures the content."
+    "formatting": 4,
+    "helpfulness": 1,
+    "overall": 1,
+    "feedback": "Response is severely inaccurate\u2014describes a bot with extensive Jira/Azure/Sentry/Grafana/MongoDB/GCP integration that shadow.ai does not have; shadow.ai is a local Claude Code runner with Slack Socket Mode, not an enterprise monitoring/ticketing platform."
   }
 }

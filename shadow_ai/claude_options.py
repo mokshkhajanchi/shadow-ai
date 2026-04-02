@@ -226,7 +226,7 @@ def create_options(
     if os.path.isdir(notes_dir):
         note_parts = []
         total_size = 0
-        max_notes_size = 50_000  # 50KB budget for all notes combined
+        max_notes_size = 100_000  # 100KB budget — notes are the most important context
         total_notes = 0
         skipped_notes = 0
 

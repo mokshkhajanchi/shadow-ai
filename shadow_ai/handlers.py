@@ -536,6 +536,14 @@ def _process_message(
                     topic = line.strip("*_#`- ").strip()[:50] or topic
                     break
 
+            # Filter noise — don't save system text or trivial content
+            if (len(convo_text.strip()) < 50
+                or "MONITORED CHANNEL" in convo_text[:200]
+                or "SLACK-THREAD-CONTEXT" in convo_text[:200]
+                or topic.startswith("MONITORED") or topic.startswith("SLACK-THREAD")):
+                slack_client.reactions_add(channel=channel, name="x", timestamp=message_ts)
+                return
+
             filepath = save_learned_knowledge(convo_text, topic, thread_ts)
 
             # Rebuild knowledge index in background
