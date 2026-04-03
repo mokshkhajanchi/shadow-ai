@@ -56,9 +56,8 @@ logger = logging.getLogger("slack-claude-code")
 def _is_learn_intent(text: str) -> bool:
     """Detect if user wants the bot to save/learn/remember something.
 
-    Uses keyword combination matching. Matches patterns like:
-    "learn this", "save what we discussed", "please remember",
-    "note this down", "take a note", etc.
+    Matches SHORT messages where the primary intent is to save/remember.
+    Long messages that happen to contain "remember" are tasks, not learn commands.
     """
     t = text.strip().lower()
 
@@ -66,29 +65,52 @@ def _is_learn_intent(text: str) -> bool:
     if t in ("learn", "remember"):
         return True
 
-    # Special phrases
-    if "take note" in t or "take a note" in t:
+    # Special phrases at start or end
+    if t.startswith("take note") or t.startswith("take a note"):
+        return True
+    if t.endswith("take note") or t.endswith("take a note") or t.endswith("take note."):
         return True
 
-    # Action + context word matching
+    # For longer messages: only match if learn intent is the ENDING
+    # e.g., "The API limit is 100. Remember this." — ends with learn intent
+    # But NOT "Please create PRs... always remember this... important" — learn buried in middle
     action_words = {"learn", "remember", "save", "note", "store", "record", "memorize", "retain"}
     context_words = {"this", "that", "conversation", "discussion", "discussed", "above", "chat", "thread", "it"}
     modifier_words = {"please", "kindly", "can", "could", "you"}
+
+    # If message starts with a task verb, it's a task — not a learn command
+    task_starters = ("please share", "please create", "please review", "please check",
+                     "please show", "please list", "please find", "please run",
+                     "create ", "share ", "review ", "show ", "list ", "find ", "run ",
+                     "check ", "update ", "fix ", "deploy ", "merge ", "push ")
+    if any(t.startswith(s) for s in task_starters):
+        return False
 
     words = set(t.split())
     has_action = bool(words & action_words)
     has_context = bool(words & context_words)
     has_modifier = bool(words & modifier_words)
 
-    if has_action and has_context:
+    # Short messages (< 100 chars): action + context is enough
+    if len(t) < 100 and has_action and has_context:
         return True
 
-    # "please remember" / "kindly save"
+    # Short messages: "please remember" / "kindly save"
     if has_action and has_modifier and len(words) <= 4:
         return True
 
+    # Check if the message ENDS with a learn phrase (last 50 chars)
+    import re as _re
+    tail = t[-50:] if len(t) > 50 else t
+    tail_clean = _re.sub(r'[.,!?;:]+', ' ', tail)
+    tail_words = set(tail_clean.split())
+    tail_has_action = bool(tail_words & action_words)
+    tail_has_context = bool(tail_words & context_words)
+    if tail_has_action and tail_has_context and len(t) < 200:
+        return True
+
     # "learn from this" / "learn from conversation"
-    if has_action and "from" in words:
+    if has_action and "from" in words and len(words) <= 6:
         return True
 
     return False
