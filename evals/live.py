@@ -172,20 +172,16 @@ def _run_multi_step_scenario(sender: WebClient, reader: WebClient, channel: str,
         logger.info(f"[EVAL] Step {i+1}/{len(steps)} ({action}): sent {msg_ts}")
 
         if action == "save":
-            # Save steps don't get text replies — bot just reacts with 🧠 + ✅
-            # Wait a short time for the note to be written to disk
-            logger.info(f"[EVAL] Step {i+1}: save action — waiting {wait}s for note to be written")
-            time.sleep(wait)
-            # Verify the save happened by checking for reactions
-            try:
-                resp = reader.reactions_get(channel=channel, timestamp=msg_ts)
-                reactions = [r["name"] for r in resp.get("message", {}).get("reactions", [])]
-                if "brain" in reactions or "white_check_mark" in reactions:
-                    logger.info(f"[EVAL] Step {i+1}: save confirmed via reactions: {reactions}")
-                else:
-                    logger.warning(f"[EVAL] Step {i+1}: save may have failed — reactions: {reactions}")
-            except Exception:
-                pass
+            # Claude now handles saves via Write tool — wait for the actual reply
+            # to confirm the note was saved before proceeding to recall
+            logger.info(f"[EVAL] Step {i+1}: save action — waiting for Claude to save and respond")
+            reply = wait_for_bot_reply(reader, channel, msg_ts, bot_user_id)
+            if reply:
+                logger.info(f"[EVAL] Step {i+1}: save confirmed — {reply['text'][:80]}...")
+            else:
+                logger.warning(f"[EVAL] Step {i+1}: save may have timed out — no reply")
+            # Extra wait for file to be flushed to disk
+            time.sleep(5)
         else:
             # Non-save steps: wait for actual reply
             reply = wait_for_bot_reply(reader, channel, msg_ts, bot_user_id)
