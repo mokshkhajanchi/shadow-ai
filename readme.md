@@ -21,7 +21,7 @@ Created by Moksh Khajanchi
 
 ```bash
 git clone https://github.com/mokshkhajanchi/shadow-ai.git && cd shadow-ai
-git checkout v1.0.0          # Use the latest stable release
+git checkout v2.0.0          # Use the latest stable release
 python3.11 -m venv .venv
 source .venv/bin/activate
 pip install -e .
