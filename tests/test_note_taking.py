@@ -1,4 +1,4 @@
-"""Tests for note-taking: fuzzy intent detection, saving, and prompt injection."""
+"""Tests for note-taking: saving, auto-save, and prompt injection."""
 
 import os
 import tempfile
@@ -6,56 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from shadow_ai.handlers import _is_learn_intent
 from shadow_ai.knowledge import save_learned_knowledge, save_conversation
-
-
-class TestIsLearnIntent:
-    """Test fuzzy intent detection for learn/remember/save commands."""
-
-    @pytest.mark.parametrize("text", [
-        "learn",
-        "remember",
-        "learn this",
-        "remember this",
-        "remember this conversation",
-        "save this",
-        "save what we discussed",
-        "save this conversation",
-        "please remember",
-        "take note",
-        "take a note",
-        "note this",
-        "store this",
-        "record this conversation",
-        "learn from this",
-        "remember that",
-    ])
-    def test_positive_intents(self, text):
-        assert _is_learn_intent(text) is True
-
-    @pytest.mark.parametrize("text", [
-        "remember what the API returns",
-        "save the file to disk",
-        "ok",
-        "thanks",
-        "hello",
-        "what is this",
-        "how does it work",
-        "deploy the app",
-        "run the tests",
-    ])
-    def test_negative_intents(self, text):
-        assert _is_learn_intent(text) is False
-
-    def test_case_insensitive(self):
-        assert _is_learn_intent("LEARN") is True
-        assert _is_learn_intent("Remember This") is True
-        assert _is_learn_intent("TAKE NOTE") is True
-
-    def test_whitespace_handling(self):
-        assert _is_learn_intent("  learn  ") is True
-        assert _is_learn_intent("  remember this  ") is True
 
 
 class TestSaveLearnedKnowledge:
@@ -74,7 +25,6 @@ class TestSaveLearnedKnowledge:
         notes_dir = str(tmp_path / "notes")
         filepath = save_learned_knowledge("content", "test/bad:chars!", "123.456", notes_dir)
         assert os.path.exists(filepath)
-        # No special chars in filename
         assert "/" not in Path(filepath).name.replace(notes_dir, "")
 
     def test_avoids_overwrite(self, tmp_path):
@@ -117,10 +67,9 @@ class TestSaveConversation:
 
 
 class TestNoteSummaryInjection:
-    """Test that notes are injected as summaries into the system prompt."""
+    """Test that notes are injected into the system prompt."""
 
     def test_notes_injected_into_prompt(self, tmp_path):
-        # Create a note file
         notes_dir = tmp_path / "knowledge" / "notes"
         notes_dir.mkdir(parents=True)
         (notes_dir / "test-note.md").write_text(
@@ -162,3 +111,14 @@ class TestNoteSummaryInjection:
         opts = create_options(config)
         prompt_text = opts.system_prompt["append"]
         assert "100 requests per minute" in prompt_text
+
+
+class TestNoteInstructionInPrompt:
+    """Test that the system prompt includes note-taking instructions for Claude."""
+
+    def test_note_taking_instructions_present(self):
+        from shadow_ai.claude_options import build_base_system_prompt
+        prompt = build_base_system_prompt(None)
+        assert "NOTE-TAKING" in prompt
+        assert "knowledge/notes/" in prompt
+        assert "Write tool" in prompt

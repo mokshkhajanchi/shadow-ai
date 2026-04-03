@@ -1,34 +1,28 @@
-- name: "learn command saves note"
+# Note-taking is now handled by Claude (not keyword detection).
+# Claude uses the Write tool to save notes when user asks to remember something.
+
+- name: "learn command triggers claude response"
   category: note_taking
-  severity: critical
+  severity: normal
   input:
-    text: "Tell me about shadow.ai, then learn from this conversation"
+    text: "The standup is at 10 AM every day. Remember this."
   expected:
     response_not_contains:
       - "error"
       - "failed"
-    min_length: 20
+    min_length: 10
 
-- name: "remember this triggers note"
+- name: "remember with task does both"
   category: note_taking
-  severity: normal
+  severity: critical
   input:
-    text: "The API rate limit is 100 requests per minute. Remember this."
+    text: "We always create feature branches from master. Remember this. Also, what branches exist in the Commerce repo?"
   expected:
     response_not_contains:
       - "error"
-    min_length: 5
+    min_length: 50
 
-- name: "take note triggers note"
-  category: note_taking
-  severity: normal
-  input:
-    text: "Our deployment process uses tag-based releases. Take note."
-  expected:
-    response_not_contains:
-      - "error"
-
-- name: "normal question does not trigger note"
+- name: "normal question not treated as note"
   category: note_taking
   severity: critical
   input:
@@ -36,5 +30,5 @@
   expected:
     response_not_contains:
       - "Saved to"
-      - "knowledge/notes/"
+      - "Noted:"
     min_length: 20

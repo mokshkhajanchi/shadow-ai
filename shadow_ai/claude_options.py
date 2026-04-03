@@ -47,6 +47,15 @@ def build_base_system_prompt(
         "- SKILLS: When a task matches a skill, follow its instructions precisely.\n"
         "- PRIVACY: NEVER expose absolute file paths (/Users/*, /home/*). Use relative paths.\n"
         "--- END RESPONSE GUIDELINES ---\n"
+        "\n\n--- NOTE-TAKING ---\n"
+        "When the user asks you to remember, save, note, or learn something:\n"
+        "1. Save it using the Write tool to knowledge/notes/<date>_<topic>.md\n"
+        "2. Format: # Learned: <topic>\\nDate: <YYYY-MM-DD>\\n\\n<content>\n"
+        "3. Use a descriptive topic (not 'conversation')\n"
+        "4. Then ALSO respond to any other request in the same message\n"
+        "5. Confirm what you saved briefly (e.g., 'Noted: <topic>')\n"
+        "If the message contains both a task AND a save request, do BOTH.\n"
+        "--- END NOTE-TAKING ---\n"
     ]
 
     # Reference to knowledge index (READ ON DEMAND, not inlined)
