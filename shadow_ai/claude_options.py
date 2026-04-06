@@ -47,17 +47,6 @@ def build_base_system_prompt(
         "- SKILLS: When a task matches a skill, follow its instructions precisely.\n"
         "- PRIVACY: NEVER expose absolute file paths (/Users/*, /home/*). Use relative paths.\n"
         "--- END RESPONSE GUIDELINES ---\n"
-        "\n\n--- NOTE-TAKING ---\n"
-        "ONLY save a note when the user's CURRENT message explicitly asks you to "
-        "remember/save/note/learn something. Look for words like 'remember this', "
-        "'save this', 'take note', 'learn' in the current message.\n"
-        "NEVER save based on thread context or previous messages. "
-        "NEVER save when the user is asking you to DO something (share, create, review, list, etc.).\n"
-        "When in doubt: do the task, don't save.\n"
-        "To save: Write tool → knowledge/notes/<date>_<topic>.md\n"
-        "Format: # Learned: <topic>\\nDate: <YYYY-MM-DD>\\n\\n<content>\n"
-        "If the message has both a task AND 'remember this': do the task FIRST, then save.\n"
-        "--- END NOTE-TAKING ---\n"
     ]
 
     # Reference to knowledge index (READ ON DEMAND, not inlined)

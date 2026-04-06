@@ -114,11 +114,10 @@ class TestNoteSummaryInjection:
 
 
 class TestNoteInstructionInPrompt:
-    """Test that the system prompt includes note-taking instructions for Claude."""
+    """Note-taking is handled by Claude naturally — no explicit instruction needed."""
 
-    def test_note_taking_instructions_present(self):
+    def test_no_note_taking_section_in_prompt(self):
+        """NOTE-TAKING section was removed to prevent Claude from over-saving."""
         from shadow_ai.claude_options import build_base_system_prompt
         prompt = build_base_system_prompt(None)
-        assert "NOTE-TAKING" in prompt
-        assert "knowledge/notes/" in prompt
-        assert "Write tool" in prompt
+        assert "NOTE-TAKING" not in prompt
