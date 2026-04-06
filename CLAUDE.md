@@ -60,20 +60,22 @@ Slack @mention/DM → events.py → handle_user_message() → _process_message()
 - **`skill_loader.py`** — Loads skills, builds skills prompt section, symlinks to `~/.claude/skills/`.
 - **`config.py`** — `BotConfig` dataclass, `from_env()` class method. All config via `.env` file.
 
-### Knowledge System
+### Project Structure (config vs data)
 
 ```
+agents/              # Agent definitions (.md) — committed
+skills/              # Skill definitions (*/SKILL.md) — committed
+workflows/           # Workflow templates (.md) — committed
+channels/            # Per-channel rules (.md) — committed
 knowledge/
-├── agents/           # Agent .md files (bundled + custom) — loaded into SDK
-├── skills/           # Skill SKILL.md dirs (bundled + custom) — injected into system prompt
-├── notes/            # Curated notes from "learn"/"remember" commands — indexed, injected as summaries
-├── conversations/    # Auto-saved raw conversations (one file per thread, overwritten) — NOT indexed
-└── system_prompt.example.md  # Custom system prompt template
+├── notes/           # Saved notes — gitignored, injected into system prompt
+├── conversations/   # Auto-saved conversations — gitignored, NOT indexed
+└── system_prompt.example.md
 ```
 
-- `knowledge/notes/` is indexed and summaries injected into every session's system prompt
-- `knowledge/conversations/` is saved but NOT indexed (just an archive)
-- `agents/` and `skills/` are committed to git
+- `knowledge/notes/` full content injected into every session's system prompt
+- `knowledge/conversations/` saved but NOT indexed (archive only)
+- `agents/`, `skills/`, `workflows/`, `channels/` are committed to git
 
 ### Channel Monitoring
 
