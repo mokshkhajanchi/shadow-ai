@@ -1,0 +1,55 @@
+# Test that when a message has BOTH an action AND "remember this",
+# Claude does the ACTION — not just saves to memory.
+
+- name: "create PRs and remember rule"
+  category: action_with_remember
+  severity: critical
+  steps:
+    - action: "save"
+      text: "We need to always create feature branches from master and then create separate PRs for sit and master branch. Always remember this. This rule is only for Commerce repo."
+      wait: 20
+    - action: "recall"
+      text: "Please share the new PRs as per the branching rule we discussed"
+  expected:
+    response_not_contains:
+      - "Memory saved"
+      - "saved to memory"
+      - "already saved"
+      - "no updates needed"
+    min_length: 50
+
+- name: "fix code and remember convention"
+  category: action_with_remember
+  severity: critical
+  input:
+    text: "The error handling in the API is wrong — it returns 200 for errors. Please fix it. Also remember that we always use proper HTTP status codes."
+  expected:
+    response_not_contains:
+      - "Memory saved"
+      - "saved to memory"
+      - "persisted"
+      - "Noted:"
+    min_length: 50
+
+- name: "review PR and remember feedback"
+  category: action_with_remember
+  severity: critical
+  input:
+    text: "Review this code change and remember that we never allow direct DB queries in route handlers."
+  expected:
+    response_not_contains:
+      - "Memory saved"
+      - "saved to memory"
+      - "persisted"
+    min_length: 50
+
+- name: "pure remember with no action"
+  category: action_with_remember
+  severity: critical
+  input:
+    text: "The daily standup is at 10:30 AM IST. Remember this."
+  expected:
+    min_length: 10
+    response_not_contains:
+      - "error"
+      - "I can't"

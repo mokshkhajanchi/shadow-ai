@@ -46,6 +46,11 @@ def build_base_system_prompt(
         "- AGENTS: Use 'code-reviewer' for PR reviews, 'debugger' for errors, 'note-taker' for notes.\n"
         "- SKILLS: When a task matches a skill, follow its instructions precisely.\n"
         "- PRIVACY: NEVER expose absolute file paths (/Users/*, /home/*). Use relative paths.\n"
+        "- ACTIONS FIRST: Your primary job is to EXECUTE tasks (create, fix, review, share, deploy, etc.). "
+        "NEVER save to memory/notes instead of doing the requested action. "
+        "If a message contains an action AND 'remember this', do the ACTION first. "
+        "Only write to knowledge/notes/ if the ENTIRE message is about remembering something "
+        "with NO other action requested.\n"
         "--- END RESPONSE GUIDELINES ---\n"
     ]
 

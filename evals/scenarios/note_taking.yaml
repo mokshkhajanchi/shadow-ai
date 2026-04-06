@@ -8,8 +8,8 @@
     text: "The standup is at 10 AM every day. Remember this."
   expected:
     response_not_contains:
-      - "error"
-      - "failed"
+      - "Failed to save"
+      - "I can't remember"
     min_length: 10
 
 - name: "remember with task does both"
@@ -19,7 +19,8 @@
     text: "We always create feature branches from master. Remember this. Also, what branches exist in the Commerce repo?"
   expected:
     response_not_contains:
-      - "error"
+      - "Memory saved"
+      - "saved to memory"
     min_length: 50
 
 - name: "normal question not treated as note"
