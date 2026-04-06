@@ -206,6 +206,7 @@ def run_wizard():
     Path("knowledge/agents").mkdir(parents=True, exist_ok=True)
     Path("knowledge/skills").mkdir(parents=True, exist_ok=True)
     Path("knowledge/channels").mkdir(parents=True, exist_ok=True)
+    Path("knowledge/workflows").mkdir(parents=True, exist_ok=True)
     Path("~/Projects").expanduser().mkdir(parents=True, exist_ok=True)
 
     print(f"  ┌─────────────────────────────────────────┐")

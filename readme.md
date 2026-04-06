@@ -67,6 +67,8 @@ Mention the bot in any Slack channel or DM:
 | `summarize` | Recap the thread |
 | `learn` / `take note` | Save notes from this conversation |
 | `review <PR-URL>` | Review an Azure DevOps PR |
+| `run <workflow> key=value` | Execute a workflow template |
+| `workflows` | List available workflows |
 | `monitor #channel` | Auto-reply to channel messages |
 | `stop monitoring #channel` | Stop monitoring a channel |
 | `monitoring` | List monitored channels |
@@ -96,6 +98,43 @@ knowledge/channels/my-channel.md
 ```
 
 The filename must match the Slack channel name. Include guidelines, domain context, constraints — anything the bot should know when replying in that channel. See `knowledge/channels/example.md` for a template.
+
+---
+
+## Workflows
+
+Pre-built multi-step workflows the bot executes on command:
+
+```
+@bot run deploy-to-staging branch=feature/xyz service=avis
+@bot run create-release-notes version=v2.12.0
+@bot workflows    — list available workflows
+```
+
+Bundled workflows: `deploy-to-staging`, `create-release-notes`, `hello-world`.
+
+### Creating Custom Workflows
+
+Drop a `.md` file in `knowledge/workflows/`:
+
+```markdown
+---
+name: my-workflow
+description: What this workflow does.
+parameters:
+  - name: branch
+    required: true
+    description: Branch to deploy
+---
+
+## Step 1: Do something
+Use {branch} parameter. Any tools available.
+
+## Step 2: Report
+Summarize results.
+```
+
+See `knowledge/workflows/example.md` for a full template.
 
 ---
 

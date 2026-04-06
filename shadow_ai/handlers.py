@@ -393,6 +393,63 @@ def _process_message(
             logger.info(f"[MONITOR] Stopped monitoring {target_channel} by {user_id}")
             return
 
+        # ── Workflow commands ──
+        if prompt_lower in ("workflows", "list workflows"):
+            from shadow_ai.workflow_loader import load_workflows, format_workflow_list
+            from pathlib import Path as _Path
+            repo_root = _Path(__file__).parent.parent
+            wf_dirs = [
+                _Path(config.claude_work_dir).expanduser() / "knowledge" / "workflows",
+                _Path.cwd() / "knowledge" / "workflows",
+                repo_root / "knowledge" / "workflows",
+            ]
+            wf_dir = next((d for d in wf_dirs if d.is_dir()), None)
+            workflows = load_workflows(wf_dir) if wf_dir else {}
+            slack_client.chat_postMessage(
+                channel=channel, thread_ts=thread_ts,
+                text=format_workflow_list(workflows),
+            )
+            return
+
+        if prompt_lower.startswith("run "):
+            from shadow_ai.workflow_loader import load_workflows, parse_workflow_command, build_workflow_prompt
+            from pathlib import Path as _Path
+            repo_root = _Path(__file__).parent.parent
+            wf_dirs = [
+                _Path(config.claude_work_dir).expanduser() / "knowledge" / "workflows",
+                _Path.cwd() / "knowledge" / "workflows",
+                repo_root / "knowledge" / "workflows",
+            ]
+            wf_dir = next((d for d in wf_dirs if d.is_dir()), None)
+            workflows = load_workflows(wf_dir) if wf_dir else {}
+
+            wf_name, wf_params = parse_workflow_command(user_text)
+            if wf_name not in workflows:
+                available = ", ".join(f"`{n}`" for n in sorted(workflows.keys())) or "none"
+                slack_client.chat_postMessage(
+                    channel=channel, thread_ts=thread_ts,
+                    text=f":x: Workflow `{wf_name}` not found. Available: {available}",
+                )
+                return
+
+            wf = workflows[wf_name]
+            # Check required parameters
+            missing = [p["name"] for p in wf.get("parameters", [])
+                       if p.get("required") and p["name"] not in wf_params]
+            if missing:
+                slack_client.chat_postMessage(
+                    channel=channel, thread_ts=thread_ts,
+                    text=f":x: Missing required parameters: {', '.join(f'`{m}`' for m in missing)}\n"
+                         f"Usage: `run {wf_name} {' '.join(f'{m}=<value>' for m in missing)}`",
+                )
+                return
+
+            # Build workflow prompt and inject it — Claude will execute the steps
+            workflow_prompt = build_workflow_prompt(wf, wf_params)
+            prompt = workflow_prompt
+            logger.info(f"[WORKFLOW] Running: {wf_name} with params {wf_params}")
+            # Fall through to Claude invocation below
+
         if prompt_lower in ("status", "bot status", "cost", "usage"):
             daily = db_get_daily_cost(db_path)
             total = db_get_total_cost(db_path)
