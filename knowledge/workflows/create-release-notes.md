@@ -1,6 +1,7 @@
 ---
 name: create-release-notes
 description: Generate release notes from merged PRs since the last release.
+usage: "@bot run create-release-notes version=v2.12.0 repo=Commerce"
 parameters:
   - name: version
     required: true

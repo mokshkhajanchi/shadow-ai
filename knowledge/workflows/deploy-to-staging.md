@@ -1,6 +1,7 @@
 ---
 name: deploy-to-staging
 description: Deploy a service branch to the staging environment.
+usage: "@bot run deploy-to-staging branch=feature/xyz service=avis env=staging"
 parameters:
   - name: branch
     required: true

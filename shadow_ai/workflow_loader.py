@@ -62,6 +62,7 @@ def _parse_workflow_md(filepath: Path) -> dict | None:
     return {
         "name": meta.get("name", filepath.stem),
         "description": meta.get("description", ""),
+        "usage": meta.get("usage", ""),
         "parameters": params,
         "body": body,
     }
@@ -136,17 +137,8 @@ def format_workflow_list(workflows: dict[str, dict]) -> str:
     lines = [":rocket: *Available Workflows:*\n"]
     for name, wf in sorted(workflows.items()):
         desc = wf.get("description", "No description")
-        params = wf.get("parameters", [])
-        param_str = ""
-        if params:
-            param_parts = []
-            for p in params:
-                if p.get("required"):
-                    param_parts.append(f"`{p['name']}`")
-                else:
-                    param_parts.append(f"`{p['name']}` (optional)")
-            param_str = f" — params: {', '.join(param_parts)}"
-        lines.append(f"• `run {name}`{param_str}\n  _{desc}_")
+        usage = wf.get("usage", f"@bot run {name}")
+        lines.append(f"• *{name}* — _{desc}_\n  `{usage}`")
 
-    lines.append("\nUsage: `@bot run <workflow-name> key=value`")
+    lines.append("")
     return "\n".join(lines)

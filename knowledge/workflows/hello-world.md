@@ -1,6 +1,7 @@
 ---
 name: hello-world
 description: A simple test workflow to verify workflows are working.
+usage: "@bot run hello-world"
 parameters: []
 ---
 

@@ -1,6 +1,7 @@
 ---
 name: example
 description: Template showing the workflow format. Copy this to create your own.
+usage: "@bot run example param1=value param2=value"
 parameters:
   - name: param1
     required: true

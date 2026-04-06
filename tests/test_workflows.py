@@ -132,13 +132,13 @@ class TestFormatWorkflowList:
 
     def test_formats_list(self):
         workflows = {
-            "deploy": {"description": "Deploy stuff", "parameters": [{"name": "branch", "required": True}]},
-            "test": {"description": "Run tests", "parameters": []},
+            "deploy": {"description": "Deploy stuff", "usage": "@bot run deploy branch=main", "parameters": [{"name": "branch", "required": True}]},
+            "test": {"description": "Run tests", "usage": "@bot run test", "parameters": []},
         }
         result = format_workflow_list(workflows)
         assert "deploy" in result
         assert "test" in result
-        assert "branch" in result
+        assert "@bot run deploy" in result
 
     def test_empty(self):
         result = format_workflow_list({})
