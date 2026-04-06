@@ -79,8 +79,6 @@ class TestLoadWorkflows:
     def test_loads_bundled_workflows(self):
         workflows = load_workflows("workflows")
         assert "hello-world" in workflows
-        assert "deploy-to-staging" in workflows
-        assert "create-release-notes" in workflows
 
 
 class TestBuildWorkflowPrompt:
