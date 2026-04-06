@@ -32,12 +32,15 @@
   category: no_over_save
   severity: critical
   input:
-    text: "Create a feature branch from master for FPP-33431. Always remember to create from master."
+    text: "Create a feature branch from master for FPP-33431 and push it to the remote repo."
   expected:
     response_not_contains:
       - "Memory saved"
       - "saved to memory"
       - "persisted"
+      - "memory check"
+      - "already saved"
+      - "no updates needed"
     min_length: 20
 
 - name: "explicit remember still works"
