@@ -95,7 +95,24 @@ def main():
     logger.info(f"Max concurrent sessions: {config.max_concurrent}")
     logger.info(f"Request timeout: {config.request_timeout}s")
 
-    # Auto-create knowledge directories
+    # Migrate: move files from old knowledge/ paths to new root paths (v2.0 → v2.1)
+    import shutil
+    for dirname in ("agents", "skills", "channels", "workflows"):
+        old_dir = Path("knowledge") / dirname
+        new_dir = Path(dirname)
+        if old_dir.is_dir() and any(old_dir.iterdir()):
+            new_dir.mkdir(parents=True, exist_ok=True)
+            for item in old_dir.iterdir():
+                dest = new_dir / item.name
+                if not dest.exists():
+                    shutil.move(str(item), str(dest))
+                    logger.info(f"[MIGRATE] Moved {old_dir / item.name} → {dest}")
+            # Remove old dir if empty
+            if not any(old_dir.iterdir()):
+                old_dir.rmdir()
+                logger.info(f"[MIGRATE] Removed empty {old_dir}")
+
+    # Auto-create directories
     Path("knowledge/notes").mkdir(parents=True, exist_ok=True)
     Path("knowledge/conversations").mkdir(parents=True, exist_ok=True)
     Path("agents").mkdir(parents=True, exist_ok=True)
