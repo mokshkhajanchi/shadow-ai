@@ -207,7 +207,7 @@ def _process_message(
                 # Check multiple locations for channel rules file
                 candidates = [
                     _Path(config.claude_work_dir).expanduser() / "channels" / f"{channel_name}.md",
-                    _Path("knowledge") / "channels" / f"{channel_name}.md",
+                    _Path("channels") / f"{channel_name}.md",
                     _Path(__file__).parent.parent / "channels" / f"{channel_name}.md",
                 ]
                 rules_file = None

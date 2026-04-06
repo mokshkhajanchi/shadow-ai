@@ -105,7 +105,7 @@ def main():
 
     # Install skills into ~/.claude/skills/ for native Claude Code discovery
     from shadow_ai.skill_loader import install_skills_to_claude
-    skills_dir = Path("knowledge") / "skills"
+    skills_dir = Path("skills")
     skill_count = install_skills_to_claude(skills_dir)
     logger.info(f"Skills symlinked to ~/.claude/skills/: {skill_count}")
 
