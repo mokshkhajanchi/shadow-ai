@@ -77,7 +77,7 @@ class TestLoadWorkflows:
         assert len(workflows) == 0
 
     def test_loads_bundled_workflows(self):
-        workflows = load_workflows("knowledge/workflows")
+        workflows = load_workflows("workflows")
         assert "hello-world" in workflows
         assert "deploy-to-staging" in workflows
         assert "create-release-notes" in workflows

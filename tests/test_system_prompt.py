@@ -104,7 +104,7 @@ class TestCreateOptions:
         assert "SAVED NOTES" in opts.system_prompt["append"]
 
     def test_skills_injected(self, tmp_path):
-        skills_dir = tmp_path / "knowledge" / "skills" / "test-skill"
+        skills_dir = tmp_path / "skills" / "test-skill"
         skills_dir.mkdir(parents=True)
         (skills_dir / "SKILL.md").write_text(
             "---\nname: test-skill\ndescription: A test.\n---\n\nDo the test thing."

@@ -206,9 +206,9 @@ def _process_message(
                 from pathlib import Path as _Path
                 # Check multiple locations for channel rules file
                 candidates = [
-                    _Path(config.claude_work_dir).expanduser() / "knowledge" / "channels" / f"{channel_name}.md",
+                    _Path(config.claude_work_dir).expanduser() / "channels" / f"{channel_name}.md",
                     _Path("knowledge") / "channels" / f"{channel_name}.md",
-                    _Path(__file__).parent.parent / "knowledge" / "channels" / f"{channel_name}.md",
+                    _Path(__file__).parent.parent / "channels" / f"{channel_name}.md",
                 ]
                 rules_file = None
                 for candidate in candidates:
@@ -399,9 +399,9 @@ def _process_message(
             from pathlib import Path as _Path
             repo_root = _Path(__file__).parent.parent
             wf_dirs = [
-                _Path(config.claude_work_dir).expanduser() / "knowledge" / "workflows",
-                _Path.cwd() / "knowledge" / "workflows",
-                repo_root / "knowledge" / "workflows",
+                _Path(config.claude_work_dir).expanduser() / "workflows",
+                _Path.cwd() / "workflows",
+                repo_root / "workflows",
             ]
             wf_dir = next((d for d in wf_dirs if d.is_dir()), None)
             workflows = load_workflows(wf_dir) if wf_dir else {}
@@ -416,9 +416,9 @@ def _process_message(
             from pathlib import Path as _Path
             repo_root = _Path(__file__).parent.parent
             wf_dirs = [
-                _Path(config.claude_work_dir).expanduser() / "knowledge" / "workflows",
-                _Path.cwd() / "knowledge" / "workflows",
-                repo_root / "knowledge" / "workflows",
+                _Path(config.claude_work_dir).expanduser() / "workflows",
+                _Path.cwd() / "workflows",
+                repo_root / "workflows",
             ]
             wf_dir = next((d for d in wf_dirs if d.is_dir()), None)
             workflows = load_workflows(wf_dir) if wf_dir else {}

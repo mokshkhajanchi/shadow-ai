@@ -73,7 +73,7 @@ knowledge/
 
 - `knowledge/notes/` is indexed and summaries injected into every session's system prompt
 - `knowledge/conversations/` is saved but NOT indexed (just an archive)
-- `knowledge/agents/` and `knowledge/skills/` are committed to git
+- `agents/` and `skills/` are committed to git
 
 ### Channel Monitoring
 

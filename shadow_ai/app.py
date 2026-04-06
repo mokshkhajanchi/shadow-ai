@@ -98,10 +98,10 @@ def main():
     # Auto-create knowledge directories
     Path("knowledge/notes").mkdir(parents=True, exist_ok=True)
     Path("knowledge/conversations").mkdir(parents=True, exist_ok=True)
-    Path("knowledge/agents").mkdir(parents=True, exist_ok=True)
-    Path("knowledge/skills").mkdir(parents=True, exist_ok=True)
-    Path("knowledge/channels").mkdir(parents=True, exist_ok=True)
-    Path("knowledge/workflows").mkdir(parents=True, exist_ok=True)
+    Path("agents").mkdir(parents=True, exist_ok=True)
+    Path("skills").mkdir(parents=True, exist_ok=True)
+    Path("channels").mkdir(parents=True, exist_ok=True)
+    Path("workflows").mkdir(parents=True, exist_ok=True)
 
     # Install skills into ~/.claude/skills/ for native Claude Code discovery
     from shadow_ai.skill_loader import install_skills_to_claude

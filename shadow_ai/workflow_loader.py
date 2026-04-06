@@ -1,4 +1,4 @@
-"""Load and execute workflow templates from knowledge/workflows/."""
+"""Load and execute workflow templates from workflows/."""
 
 import logging
 import re
@@ -132,7 +132,7 @@ def parse_workflow_command(text: str) -> tuple[str, dict[str, str]]:
 def format_workflow_list(workflows: dict[str, dict]) -> str:
     """Format a list of available workflows for display."""
     if not workflows:
-        return ":file_folder: No workflows found. Add `.md` files to `knowledge/workflows/`."
+        return ":file_folder: No workflows found. Add `.md` files to `workflows/`."
 
     lines = [":rocket: *Available Workflows:*\n"]
     for name, wf in sorted(workflows.items()):

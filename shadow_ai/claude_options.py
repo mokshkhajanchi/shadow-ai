@@ -183,23 +183,23 @@ def create_options(
         from shadow_ai.guardrails import monitored_tool_guard
         opts.can_use_tool = monitored_tool_guard
 
-    # Load agents from knowledge/agents/ (check multiple locations)
+    # Load agents from agents/ (check multiple locations)
     repo_root = Path(__file__).parent.parent
     agents_dir = next((d for d in [
-        Path(cwd) / "knowledge" / "agents",
-        Path.cwd() / "knowledge" / "agents",
-        repo_root / "knowledge" / "agents",
-    ] if d.is_dir()), Path(cwd) / "knowledge" / "agents")
+        Path(cwd) / "agents",
+        Path.cwd() / "agents",
+        repo_root / "agents",
+    ] if d.is_dir()), Path(cwd) / "agents")
     agents = load_agents(agents_dir)
     if agents:
         opts.agents = agents
 
-    # Load skills from knowledge/skills/ (check multiple locations)
+    # Load skills from skills/ (check multiple locations)
     skills_dir = next((d for d in [
-        Path(cwd) / "knowledge" / "skills",
-        Path.cwd() / "knowledge" / "skills",
-        repo_root / "knowledge" / "skills",
-    ] if d.is_dir()), Path(cwd) / "knowledge" / "skills")
+        Path(cwd) / "skills",
+        Path.cwd() / "skills",
+        repo_root / "skills",
+    ] if d.is_dir()), Path(cwd) / "skills")
     loaded_skills = load_skills(skills_dir)
 
     # Model selection: inline override > env var > SDK default

@@ -88,8 +88,8 @@ class TestLoadAgents:
         assert agents == {}
 
     def test_loads_bundled_agents(self):
-        """Verify the bundled agents in knowledge/agents/ load correctly."""
-        agents = load_agents("knowledge/agents")
+        """Verify the bundled agents in agents/ load correctly."""
+        agents = load_agents("agents")
         assert "code-reviewer" in agents
         assert "debugger" in agents
         assert "note-taker" in agents
@@ -131,8 +131,8 @@ class TestLoadSkills:
         assert len(skills) == 1
 
     def test_loads_bundled_skills(self):
-        """Verify the bundled skills in knowledge/skills/ load correctly."""
-        skills = load_skills("knowledge/skills")
+        """Verify the bundled skills in skills/ load correctly."""
+        skills = load_skills("skills")
         assert "brainstorm" in skills
         assert "tdd" in skills
         assert "pr-review" in skills

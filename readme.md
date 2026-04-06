@@ -91,13 +91,13 @@ The bot joins the channel, replies in threads, uses haiku (cheapest model), and 
 
 ### Per-Channel Rules
 
-Define how the bot behaves in each channel by creating a rules file in `knowledge/channels/`:
+Define how the bot behaves in each channel by creating a rules file in `channels/`:
 
 ```
-knowledge/channels/my-channel.md
+channels/my-channel.md
 ```
 
-The filename must match the Slack channel name. Include guidelines, domain context, constraints — anything the bot should know when replying in that channel. See `knowledge/channels/example.md` for a template.
+The filename must match the Slack channel name. Include guidelines, domain context, constraints — anything the bot should know when replying in that channel. See `channels/example.md` for a template.
 
 ---
 
@@ -106,16 +106,13 @@ The filename must match the Slack channel name. Include guidelines, domain conte
 Pre-built multi-step workflows the bot executes on command:
 
 ```
-@bot run deploy-to-staging branch=feature/xyz service=avis
-@bot run create-release-notes version=v2.12.0
 @bot workflows    — list available workflows
 ```
 
-Bundled workflows: `deploy-to-staging`, `create-release-notes`, `hello-world`.
 
 ### Creating Custom Workflows
 
-Drop a `.md` file in `knowledge/workflows/`:
+Drop a `.md` file in `workflows/`:
 
 ```markdown
 ---
@@ -134,7 +131,7 @@ Use {branch} parameter. Any tools available.
 Summarize results.
 ```
 
-See `knowledge/workflows/example.md` for a full template.
+See `workflows/example.md` for a full template.
 
 ---
 
@@ -201,7 +198,7 @@ The bot ships with specialized agents that Claude uses automatically:
 
 ### Creating Custom Agents
 
-Drop a `.md` file in `knowledge/agents/`:
+Drop a `.md` file in `agents/`:
 
 ```markdown
 ---
@@ -237,10 +234,10 @@ Skills are installed to `~/.claude/skills/` at startup so they work with the bot
 
 ### Creating Custom Skills
 
-Create a directory in `knowledge/skills/` with a `SKILL.md`:
+Create a directory in `skills/` with a `SKILL.md`:
 
 ```
-knowledge/skills/my-skill/SKILL.md
+skills/my-skill/SKILL.md
 ```
 
 Format: YAML frontmatter (name, description) + markdown instructions. Restart the bot to install.
