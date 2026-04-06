@@ -1,0 +1,52 @@
+# Verify Claude does NOT save notes when the user asks to DO something.
+# These are action requests that should be executed, not saved to memory.
+
+- name: "revert commit is action not save"
+  category: no_over_save
+  severity: critical
+  input:
+    text: "The 2nd point is not valid. Please remove its commit"
+  expected:
+    response_not_contains:
+      - "Memory saved"
+      - "saved to memory"
+      - "persisted"
+      - "noted for future"
+      - "Noted:"
+    min_length: 20
+
+- name: "share PRs is action not save"
+  category: no_over_save
+  severity: critical
+  input:
+    text: "Please share the PRs with their jira ticket as well"
+  expected:
+    response_not_contains:
+      - "Memory saved"
+      - "saved to memory"
+      - "persisted"
+      - "Noted:"
+    min_length: 20
+
+- name: "create branch is action not save"
+  category: no_over_save
+  severity: critical
+  input:
+    text: "Create a feature branch from master for FPP-33431. Always remember to create from master."
+  expected:
+    response_not_contains:
+      - "Memory saved"
+      - "saved to memory"
+      - "persisted"
+    min_length: 20
+
+- name: "explicit remember still works"
+  category: no_over_save
+  severity: critical
+  input:
+    text: "The API rate limit is 500 requests per minute. Remember this."
+  expected:
+    min_length: 10
+    response_not_contains:
+      - "I don't know"
+      - "error"
