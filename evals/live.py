@@ -249,7 +249,8 @@ def run_live_scenario(sender: WebClient, reader: WebClient, channel: str, bot_us
     logger.info(f"[EVAL] Sent message: {msg_ts}")
 
     # Wait for reply (read as bot to see all messages)
-    reply = wait_for_bot_reply(reader, channel, msg_ts, bot_user_id)
+    timeout = input_data.get("timeout", RESPONSE_TIMEOUT)
+    reply = wait_for_bot_reply(reader, channel, msg_ts, bot_user_id, timeout=timeout)
 
     if reply is None:
         # Check if no-reply is expected (noise filter scenarios with empty response_contains)

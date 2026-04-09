@@ -5,7 +5,7 @@
   category: no_over_save
   severity: critical
   input:
-    text: "The 2nd point is not valid. Please remove its commit"
+    text: "Check the recent git commits in the current repo and show me the last 5 commits."
   expected:
     response_not_contains:
       - "Memory saved"
@@ -19,7 +19,7 @@
   category: no_over_save
   severity: critical
   input:
-    text: "Please share the PRs with their jira ticket as well"
+    text: "List the open PRs in the Commerce repo and include their linked Jira tickets."
   expected:
     response_not_contains:
       - "Memory saved"
@@ -47,7 +47,7 @@
   category: no_over_save
   severity: critical
   input:
-    text: "The API rate limit is 500 requests per minute. Remember this."
+    text: "The staging environment URL is staging.example.internal. Remember this."
   expected:
     min_length: 10
     response_not_contains:

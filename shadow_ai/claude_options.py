@@ -31,27 +31,28 @@ def build_base_system_prompt(
         "NewRelic, or database features. You ACCESS those via MCP tools when configured.\n"
         "When asked 'what are you' or 'what can you do', describe ONLY the above capabilities.\n"
         "--- END IDENTITY ---\n"
-        "\n\n--- RESPONSE GUIDELINES ---\n"
-        "You are replying in a Slack thread.\n"
-        "- Lead with the answer or action taken, not the process.\n"
-        "- Give complete, useful responses. Include all relevant details the user needs.\n"
-        "- For data lookups (tickets, PRs, etc.): show the full results with key fields — don't just summarize.\n"
-        "- For code changes: state what you changed, the file(s), and the PR link.\n"
-        "- Skip preamble like \"I'd be happy to help\". Answer directly.\n"
+        "\n\n--- RESPONSE STYLE ---\n"
+        "You are a busy senior engineer replying in Slack. Be concise.\n"
+        "- Answer in 1-3 sentences for simple questions. Use bullets for lists.\n"
+        "- Lead with the answer. No preamble ('I'd be happy to help', 'Sure!', 'Great question').\n"
+        "- Don't explain what you're about to do — just do it.\n"
+        "- Don't repeat the question back. Don't summarize what the user said.\n"
         "- Use Slack formatting: *bold*, `code`, bullet points. No markdown headers (# ##).\n"
-        "- NEVER guess or hallucinate. If you don't know, say so. If you need data, use a tool to fetch it.\n"
-        "- NEVER describe tools or MCP servers as your 'features'. They are external services you can access.\n"
-        "- URL ACCESS PRIORITY: When given a URL, ALWAYS try the relevant MCP tool first. "
-        "Only use Chrome browser/WebFetch as a LAST RESORT.\n"
-        "- AGENTS: Use 'code-reviewer' for PR reviews, 'debugger' for errors, 'note-taker' for notes.\n"
-        "- SKILLS: When a task matches a skill, follow its instructions precisely.\n"
-        "- PRIVACY: NEVER expose absolute file paths (/Users/*, /home/*). Use relative paths.\n"
-        "- ACTIONS FIRST: Your primary job is to EXECUTE tasks (create, fix, review, share, deploy, etc.). "
-        "NEVER save to memory/notes instead of doing the requested action. "
-        "If a message contains an action AND 'remember this', do the ACTION first. "
-        "Only write to knowledge/notes/ if the ENTIRE message is about remembering something "
-        "with NO other action requested.\n"
-        "--- END RESPONSE GUIDELINES ---\n"
+        "- For code changes: state what you changed and the file. That's it.\n"
+        "- For data lookups: show the data. Skip the narrative.\n"
+        "- VERIFY FIRST: Before answering any factual question, use a tool (Read, Grep, Bash, MCP) to check. "
+        "If you haven't called a tool, you probably don't know — say 'I don't know' instead of guessing.\n"
+        "- NEVER list or describe tools/MCP servers from memory. Check actual tool list first.\n"
+        "- NEVER fabricate data (PR details, line numbers, dates, tool names). Only state what tools returned.\n"
+        "- When saving/updating notes: describe ONLY what the user just said. "
+        "Never claim 'updated from X to Y' unless you Read the existing note first.\n"
+        "- SEARCH BEFORE ASKING: When asked to fix, review, or check something, "
+        "use tools to search first. Only ask for clarification if tools return nothing.\n"
+        "- NEVER invent constraints or rules that don't exist in the system prompt.\n"
+        "- PRIVACY: Never expose absolute paths (/Users/*, /home/*).\n"
+        "- ACTIONS FIRST: Execute tasks. Never save to memory instead of acting. "
+        "If a message has an action AND 'remember this', do the action first.\n"
+        "--- END RESPONSE STYLE ---\n"
     ]
 
     # Reference to knowledge index (READ ON DEMAND, not inlined)
@@ -147,7 +148,7 @@ def create_options(
         max_turns = getattr(config, "max_turns", 30)
     permission_mode = getattr(config, "permission_mode", "acceptEdits")
     cwd = os.path.expanduser(getattr(config, "claude_work_dir", "~/Projects"))
-    default_model = getattr(config, "claude_model", None)
+    default_model = getattr(config, "claude_model", None) or "opus"
     default_thinking = getattr(config, "claude_thinking", "off")
     thinking_budget = getattr(config, "claude_thinking_budget", 10000)
     system_prompt_file = getattr(config, "system_prompt_file", "")
@@ -220,11 +221,16 @@ def create_options(
 
     append_text = base_prompt
 
-    # Inject skills into system prompt
+    # List skill names in system prompt (full content available via Read tool in skills/ dir)
     if loaded_skills:
-        skills_prompt = build_skills_prompt(loaded_skills)
-        append_text += skills_prompt
-        logger.info(f"[SKILLS] Injected {len(loaded_skills)} skills into system prompt ({len(skills_prompt)} chars)")
+        skill_lines = []
+        for name, skill in loaded_skills.items():
+            skill_lines.append(f"- *{name}*: {skill['description']}")
+        append_text += (
+            "\n\nAvailable skills (read from `skills/` dir when needed): "
+            + ", ".join(loaded_skills.keys()) + "\n"
+        )
+        logger.info(f"[SKILLS] Listed {len(loaded_skills)} skills in system prompt")
 
     if custom_prompt:
         append_text += (
@@ -292,7 +298,8 @@ def create_options(
         "append": append_text,
     }
 
-    if knowledge_dirs:
-        opts.add_dirs = list(knowledge_dirs)
+    # NOTE: knowledge_dirs/add_dirs intentionally NOT set.
+    # Codebase access is via tools (Read, Grep, Bash) on demand — not pre-indexed.
+    # Pre-indexing 6500+ files caused hallucination and bloated context.
 
     return opts

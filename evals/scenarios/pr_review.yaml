@@ -5,6 +5,7 @@
     text: "Review this PR now. Fetch the details, clone the repo, get the diff, and give me a structured review. Even if it's merged, review the code changes. PR: https://dev.azure.com/GoFynd/FyndOne/_git/Commerce/pullrequest/248384"
     monitored: true
     channel: "shadow-ai-testing"
+    timeout: 300
   expected:
     response_contains:
       - "PR"
@@ -23,6 +24,7 @@
   input:
     text: "I need a code review of PR #248384 in the Commerce repo. Use the Azure DevOps tools to fetch the PR details. https://dev.azure.com/GoFynd/FyndOne/_git/Commerce/pullrequest/248384"
     monitored: true
+    timeout: 300
   expected:
     tools_used:
       - "repo_get_pull_request_by_id"
@@ -39,6 +41,7 @@
   input:
     text: "Clone the Commerce repo and show me the actual git diff for this PR. I want to see the code changes, not just metadata. https://dev.azure.com/GoFynd/FyndOne/_git/Commerce/pullrequest/248384"
     monitored: true
+    timeout: 300
   expected:
     tools_used:
       - "Bash"

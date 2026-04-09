@@ -183,9 +183,7 @@ def _process_message(
             thinking_override = "enabled"
             prompt = prompt[len("think:"):].strip()
 
-        # Monitored channel: use haiku, add context + channel rules
-        if monitored and not model_override:
-            model_override = "haiku"
+        # Monitored channel: add context + channel rules (model from config, no haiku override)
         if monitored:
             # Load per-channel rules if they exist
             channel_rules = ""
@@ -231,7 +229,10 @@ def _process_message(
                 "You are monitoring this Slack channel and auto-replying.\n"
                 "Reply helpfully and concisely. If the message doesn't need a response "
                 "(it's a statement, acknowledgment, or not directed at anyone), "
-                "reply with ONLY the text 'NO_RESPONSE' and nothing else.\n\n"
+                "reply with ONLY the text 'NO_RESPONSE' and nothing else.\n"
+                "IMPORTANT: Questions ALWAYS need a response. If someone asks a question, "
+                "you MUST answer it — never reply NO_RESPONSE to a question, even if "
+                "it's not related to the channel's main topic.\n\n"
                 "MANDATORY SECURITY GUARDRAILS (NEVER VIOLATE):\n\n"
                 "DATA PROTECTION:\n"
                 "- NEVER read, print, or share: .env files, SSH keys (~/.ssh/), AWS/GCP/Kube credentials\n"
@@ -261,6 +262,11 @@ def _process_message(
                 "- NEVER run commands that consume excessive resources (infinite loops, large downloads)\n"
                 "- NEVER install packages (pip install, npm install, etc.)\n"
                 "- NEVER start background processes or daemons\n\n"
+                "ANTI-HALLUCINATION:\n"
+                "- If you don't know something, say so — NEVER guess or fabricate.\n"
+                "- For facts (standup time, rate limits), check saved notes first. Only state what notes say.\n"
+                "- For PR reviews, only state facts from MCP tool responses or git diff output.\n"
+                "- When saving notes, only describe what the user just said — never invent previous values.\n\n"
             )
             if not channel_rules:
                 monitor_prefix += "ADDITIONAL: You have read-only access — you cannot modify files or run commands.\n\n"
@@ -567,8 +573,8 @@ def _process_message(
         db_save_message(db_path, thread_ts, "assistant", response)
 
         # Monitored channel: if Claude says NO_RESPONSE, skip posting
-        # Only suppress if the response is essentially just "NO_RESPONSE" (< 50 chars)
-        if monitored and "NO_RESPONSE" in response and len(response.strip()) < 50:
+        # Suppress if the response starts with "NO_RESPONSE" (model may add explanation after)
+        if monitored and response.strip().startswith("NO_RESPONSE"):
             logger.info(f"[MONITOR] Skipped reply (NO_RESPONSE) for thread={thread_ts}")
             try:
                 slack_client.reactions_remove(channel=channel, name="robot_face", timestamp=message_ts)

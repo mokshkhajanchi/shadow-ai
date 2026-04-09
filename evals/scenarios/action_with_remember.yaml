@@ -22,25 +22,29 @@
   category: action_with_remember
   severity: critical
   input:
-    text: "The error handling in the API is wrong — it returns 200 for errors. Please fix it. Also remember that we always use proper HTTP status codes."
+    text: "Search for error handling in the API routes of this repo and show me what you find. Also remember that we always use proper HTTP status codes."
   expected:
     response_not_contains:
       - "Memory saved"
       - "saved to memory"
       - "persisted"
       - "Noted:"
+      - "Which API"
+      - "Which service"
     min_length: 50
 
 - name: "review PR and remember feedback"
   category: action_with_remember
   severity: critical
   input:
-    text: "Review this code change and remember that we never allow direct DB queries in route handlers."
+    text: "Check the last few git commits in this repo and review the changes. Also remember that we never allow direct DB queries in route handlers."
   expected:
     response_not_contains:
       - "Memory saved"
       - "saved to memory"
       - "persisted"
+      - "Which code"
+      - "Which PR"
     min_length: 50
 
 - name: "pure remember with no action"

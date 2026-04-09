@@ -38,6 +38,7 @@
   input:
     text: "please review https://dev.azure.com/GoFynd/FyndOne/_git/Commerce/pullrequest/248384"
     monitored: true
+    timeout: 300
   expected:
     response_not_contains:
       - "NO_RESPONSE"

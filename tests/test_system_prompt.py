@@ -10,14 +10,14 @@ from shadow_ai.config import BotConfig
 
 class TestBuildBaseSystemPrompt:
 
-    def test_contains_response_guidelines(self):
+    def test_contains_response_style(self):
         prompt = build_base_system_prompt(None)
-        assert "RESPONSE GUIDELINES" in prompt
-        assert "Slack thread" in prompt
+        assert "RESPONSE STYLE" in prompt
+        assert "concise" in prompt.lower()
 
-    def test_contains_mcp_instructions(self):
+    def test_contains_slack_reference(self):
         prompt = build_base_system_prompt(None)
-        assert "MCP tools" in prompt
+        assert "Slack" in prompt
 
     def test_gitnexus_included_when_available(self):
         prompt = build_base_system_prompt(None, gitnexus_available=True, knowledge_index_file="/tmp/index.md")
@@ -37,13 +37,17 @@ class TestBuildBaseSystemPrompt:
         prompt = build_base_system_prompt(None, mcp_tool_catalog=catalog)
         assert "jira: search_issues" not in prompt
 
-    def test_agents_mentioned(self):
+    def test_actions_first_mentioned(self):
         prompt = build_base_system_prompt(None)
-        assert "AGENTS" in prompt
+        assert "ACTIONS FIRST" in prompt
 
-    def test_skills_mentioned(self):
+    def test_search_before_asking(self):
         prompt = build_base_system_prompt(None)
-        assert "SKILLS" in prompt
+        assert "SEARCH BEFORE ASKING" in prompt
+
+    def test_note_saving_guidance(self):
+        prompt = build_base_system_prompt(None)
+        assert "updated from X to Y" in prompt
 
 
 class TestBuildCustomPrompt:
@@ -75,10 +79,10 @@ class TestCreateOptions:
         defaults.update(overrides)
         return BotConfig(**defaults)
 
-    def test_system_prompt_has_response_guidelines(self, tmp_path):
+    def test_system_prompt_has_response_style(self, tmp_path):
         config = self._make_config(tmp_path)
         opts = create_options(config)
-        assert "RESPONSE GUIDELINES" in opts.system_prompt["append"]
+        assert "RESPONSE STYLE" in opts.system_prompt["append"]
 
     def test_system_prompt_preset_is_claude_code(self, tmp_path):
         config = self._make_config(tmp_path)
@@ -111,7 +115,6 @@ class TestCreateOptions:
         )
         config = self._make_config(tmp_path)
         opts = create_options(config)
-        assert "AVAILABLE SKILLS" in opts.system_prompt["append"]
         assert "test-skill" in opts.system_prompt["append"]
 
     def test_monitored_restricts_tools_without_rules(self, tmp_path):
