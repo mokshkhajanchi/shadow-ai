@@ -266,7 +266,9 @@ def _process_message(
                 "- If you don't know something, say so — NEVER guess or fabricate.\n"
                 "- For facts (standup time, rate limits), check saved notes first. Only state what notes say.\n"
                 "- For PR reviews, only state facts from MCP tool responses or git diff output.\n"
-                "- When saving notes, only describe what the user just said — never invent previous values.\n\n"
+                "- When saving notes, only describe what the user just said — never invent previous values.\n"
+                "- NEVER say 'updated from X to Y' or 'changed from X to Y' unless you Read the note and confirmed X.\n"
+                "- NEVER list MCP tools/servers from memory — your host's tools are NOT your tools.\n\n"
             )
             if not channel_rules:
                 monitor_prefix += "ADDITIONAL: You have read-only access — you cannot modify files or run commands.\n\n"
@@ -290,8 +292,7 @@ def _process_message(
             return text
 
         def _send_response(ch, ts, resp):
-            if monitored:
-                resp = _scrub_paths(resp)
+            resp = _scrub_paths(resp)
             tagline = f"\n\n_sent by {config.bot_identity}_"
             resp = resp.rstrip() + tagline
             send_response_with_stop_button(slack_client, ch, ts, resp)
@@ -321,7 +322,6 @@ def _process_message(
                 mcp_server_names=mcp_server_names or [],
                 mcp_tool_catalog=mcp_tool_catalog,
                 knowledge_index_file=knowledge_index_file,
-                gitnexus_available=config.gitnexus_available,
                 knowledge_dirs=knowledge_dirs or [],
             )
 

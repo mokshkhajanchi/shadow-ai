@@ -78,7 +78,7 @@ def load_workflows(*workflow_dirs: str | Path) -> dict[str, dict]:
         source_path = Path(source_dir)
         if not source_path.is_dir():
             continue
-        for md_file in sorted(source_path.glob("*.md")):
+        for md_file in sorted(source_path.glob("**/*.md")):
             if md_file.name == "example.md":
                 continue
             parsed = _parse_workflow_md(md_file)

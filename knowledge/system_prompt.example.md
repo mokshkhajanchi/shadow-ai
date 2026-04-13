@@ -3,6 +3,12 @@
 These instructions are appended to the base system prompt for your shadow.ai.
 Customize this file for your team's specific tools, repos, and conventions.
 
+## Bot Behavior Overrides
+<!-- If your ~/.claude/CLAUDE.md has auto-memory or other personal instructions,
+     override them here so they don't bleed into the bot's sessions. -->
+- Do NOT run memory-agent, auto-memory, or save-to-memory subagents.
+- Your only persistence mechanism is the knowledge/notes/ directory via the Write tool.
+
 ## Response Style
 - Include a subtle signature at the end of PR review comments and Jira comments:
   - Azure DevOps: `\n\n<sub>sent by your-bot-name</sub>`

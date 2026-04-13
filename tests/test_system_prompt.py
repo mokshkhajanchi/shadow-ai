@@ -19,13 +19,10 @@ class TestBuildBaseSystemPrompt:
         prompt = build_base_system_prompt(None)
         assert "Slack" in prompt
 
-    def test_gitnexus_included_when_available(self):
-        prompt = build_base_system_prompt(None, gitnexus_available=True, knowledge_index_file="/tmp/index.md")
-        assert "gitnexus" in prompt.lower()
-
-    def test_gitnexus_excluded_when_unavailable(self):
-        prompt = build_base_system_prompt(None, gitnexus_available=False)
-        assert "gitnexus" not in prompt.lower()
+    def test_codebase_reference_included(self):
+        prompt = build_base_system_prompt(None, knowledge_index_file="/tmp/index.md")
+        assert "CODEBASE REFERENCE" in prompt
+        assert "/tmp/index.md" in prompt
 
     def test_knowledge_index_included(self):
         prompt = build_base_system_prompt(None, knowledge_index_file="/path/to/index.md")
@@ -48,6 +45,25 @@ class TestBuildBaseSystemPrompt:
     def test_note_saving_guidance(self):
         prompt = build_base_system_prompt(None)
         assert "updated from X to Y" in prompt
+
+    def test_mcp_tool_anti_hallucination(self):
+        """Bot must not list MCP tools from memory."""
+        prompt = build_base_system_prompt(None)
+        assert "do NOT know which MCP servers are configured" in prompt
+        assert "Claude Code host tools" in prompt
+
+    def test_working_directory_awareness(self):
+        """Bot should search before claiming no code is found."""
+        prompt = build_base_system_prompt(None)
+        assert "WORKING DIRECTORY" in prompt
+        assert "Glob" in prompt
+
+    def test_debugging_trigger_rule(self):
+        """Bot must invoke systematic-debugging on bug/fix requests."""
+        prompt = build_base_system_prompt(None)
+        assert "DEBUGGING" in prompt
+        assert "systematic-debugging" in prompt
+        assert "Root cause first" in prompt
 
 
 class TestBuildCustomPrompt:
@@ -116,6 +132,12 @@ class TestCreateOptions:
         config = self._make_config(tmp_path)
         opts = create_options(config)
         assert "test-skill" in opts.system_prompt["append"]
+
+    def test_systematic_debugging_skill_bundled(self, tmp_path):
+        """systematic-debugging ships as a default skill in the repo's skills/ dir."""
+        config = self._make_config(tmp_path)
+        opts = create_options(config)
+        assert "systematic-debugging" in opts.system_prompt["append"]
 
     def test_monitored_restricts_tools_without_rules(self, tmp_path):
         config = self._make_config(tmp_path)

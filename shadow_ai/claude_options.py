@@ -14,7 +14,6 @@ logger = logging.getLogger("slack-claude-code")
 
 def build_base_system_prompt(
     config,
-    gitnexus_available: bool = False,
     knowledge_index_file: str = "",
     mcp_tool_catalog: str = "",
 ) -> str:
@@ -30,6 +29,11 @@ def build_base_system_prompt(
         "You are NOT a platform. You do NOT have built-in Grafana, Sentry, MongoDB, "
         "NewRelic, or database features. You ACCESS those via MCP tools when configured.\n"
         "When asked 'what are you' or 'what can you do', describe ONLY the above capabilities.\n"
+        "CRITICAL: You do NOT know which MCP servers are configured. The tools in your "
+        "system context belong to Claude Code (your host), NOT to shadow.ai. When asked "
+        "'what tools/MCP servers do you have', you MUST check your actual tool list or "
+        "read settings — NEVER list tools from memory. Tools like Gmail, Figma, Google Calendar, "
+        "Chrome browser, and filesystem MCP are Claude Code host tools, NOT your capabilities.\n"
         "--- END IDENTITY ---\n"
         "\n\n--- RESPONSE STYLE ---\n"
         "You are a busy senior engineer replying in Slack. Be concise.\n"
@@ -42,37 +46,35 @@ def build_base_system_prompt(
         "- For data lookups: show the data. Skip the narrative.\n"
         "- VERIFY FIRST: Before answering any factual question, use a tool (Read, Grep, Bash, MCP) to check. "
         "If you haven't called a tool, you probably don't know — say 'I don't know' instead of guessing.\n"
-        "- NEVER list or describe tools/MCP servers from memory. Check actual tool list first.\n"
+        "- NEVER list or describe tools/MCP servers from memory. Your host (Claude Code) has many tools "
+        "that are NOT yours. If asked about your tools, say you need to check and use a tool to verify.\n"
         "- NEVER fabricate data (PR details, line numbers, dates, tool names). Only state what tools returned.\n"
         "- When saving/updating notes: describe ONLY what the user just said. "
-        "Never claim 'updated from X to Y' unless you Read the existing note first.\n"
+        "Never claim 'updated from X to Y' or 'changed from X to Y' unless you Read the existing note first "
+        "and confirmed the old value. If you haven't Read the note, just say 'Saved' — don't invent a previous value.\n"
         "- SEARCH BEFORE ASKING: When asked to fix, review, or check something, "
         "use tools to search first. Only ask for clarification if tools return nothing.\n"
+        "- WORKING DIRECTORY: Your cwd may be a general directory (e.g. ~/Projects). "
+        "Don't assume there's no code — use Glob/Grep/Bash to explore subdirectories. "
+        "If the user asks about 'the code' or 'the repo', search for it before saying 'no repo found'.\n"
         "- NEVER invent constraints or rules that don't exist in the system prompt.\n"
         "- PRIVACY: Never expose absolute paths (/Users/*, /home/*).\n"
         "- ACTIONS FIRST: Execute tasks. Never save to memory instead of acting. "
         "If a message has an action AND 'remember this', do the action first.\n"
+        "- DEBUGGING: For any bug, error, test failure, or 'fix this' request, invoke the "
+        "systematic-debugging skill BEFORE proposing a fix. Root cause first, patches last.\n"
         "--- END RESPONSE STYLE ---\n"
     ]
 
     # Reference to knowledge index (READ ON DEMAND, not inlined)
     if knowledge_index_file:
-        if gitnexus_available:
-            parts.append(
-                "\n\n--- CODE INTELLIGENCE ---\n"
-                "You have GitNexus MCP tools for code intelligence. Use gitnexus_query, "
-                "gitnexus_context, gitnexus_impact for code exploration.\n"
-                f"Knowledge index (docs only): {knowledge_index_file} — Read it when needed.\n"
-                "--- END CODE INTELLIGENCE ---\n"
-            )
-        else:
-            parts.append(
-                "\n\n--- CODEBASE REFERENCE ---\n"
-                f"The user's project files are indexed at: {knowledge_index_file}\n"
-                "Read this file ONLY when you need to look up code, files, or project structure.\n"
-                "Do NOT assume you know the codebase — always Read the index first.\n"
-                "--- END CODEBASE REFERENCE ---\n"
-            )
+        parts.append(
+            "\n\n--- CODEBASE REFERENCE ---\n"
+            f"The user's project files are indexed at: {knowledge_index_file}\n"
+            "Read this file ONLY when you need to look up code, files, or project structure.\n"
+            "Do NOT assume you know the codebase — always Read the index first.\n"
+            "--- END CODEBASE REFERENCE ---\n"
+        )
 
     # NOTE: MCP tool catalog is intentionally NOT included in the system prompt.
     # Claude already has the tool list from the SDK. Including it here causes
@@ -114,7 +116,6 @@ def create_options(
     mcp_server_names: list[str] | None = None,
     mcp_tool_catalog: str = "",
     knowledge_index_file: str = "",
-    gitnexus_available: bool = False,
     knowledge_dirs: list[str] | None = None,
     monitored: bool = False,
 ):
@@ -212,7 +213,6 @@ def create_options(
     # Build system prompt: base (universal) + custom (user-specific)
     base_prompt = build_base_system_prompt(
         config,
-        gitnexus_available=gitnexus_available,
         knowledge_index_file=knowledge_index_file,
         mcp_tool_catalog=mcp_tool_catalog,
     )

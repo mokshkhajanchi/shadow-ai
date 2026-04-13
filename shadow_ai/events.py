@@ -208,8 +208,8 @@ def register_events(
         # Ignore messages from the bot itself
         if event.get("user") == bot_user_id:
             return
-        # Ignore messages from other bots (but allow user-token messages that have bot_id)
-        if event.get("bot_id") and not event.get("user"):
+        # Ignore messages from other bots/apps (bot_id present = automated message)
+        if event.get("bot_id"):
             return
         if event.get("subtype"):
             return
@@ -254,11 +254,12 @@ def register_events(
         if not is_dm and not has_session and not has_db_thread:
             return
 
-        # Thread follow-ups in monitored channels still require authorization
-        # (only the initial auto-reply skips auth — follow-ups have full tool access)
+        # Thread follow-ups in monitored channels pass monitored=True
+        # so auth is skipped (anyone in the channel can interact in threads)
         handle_user_message(
             user_id, channel, effective_thread_ts, message_ts, text,
             files=event.get("files"),
+            monitored=is_monitored,
             **_hum_kwargs,
         )
 

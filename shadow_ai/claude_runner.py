@@ -8,12 +8,20 @@ existing sessions, and collecting streamed responses from the SDK.
 import asyncio
 import json
 import logging
+import os
 import re
 import threading
 import time
 import traceback
 
 logger = logging.getLogger("slack-claude-code")
+
+# Increase SDK initialize timeout (default 60s can be too short with many MCP servers)
+# The SDK reads CLAUDE_CODE_STREAM_CLOSE_TIMEOUT (in ms) and uses max(value, 60s)
+if "CLAUDE_CODE_STREAM_CLOSE_TIMEOUT" not in os.environ:
+    os.environ["CLAUDE_CODE_STREAM_CLOSE_TIMEOUT"] = "120000"  # 120s
+
+_INIT_MAX_RETRIES = 2  # retry once on initialize timeout
 
 
 def _get_cli_pid(sdk_client) -> int | None:
@@ -22,6 +30,39 @@ def _get_cli_pid(sdk_client) -> int | None:
         return sdk_client._transport._process.pid
     except Exception:
         return None
+
+
+async def _connect_with_retry(options, thread_ts: str = ""):
+    """Connect to the Claude Code CLI with retry on initialize timeout.
+
+    MCP server startup can be slow under load, causing transient timeouts.
+    Retrying once with a fresh client resolves most cases.
+    """
+    from claude_agent_sdk import ClaudeSDKClient
+
+    last_error = None
+    for attempt in range(1, _INIT_MAX_RETRIES + 1):
+        try:
+            sdk_client = ClaudeSDKClient(options=options)
+            await sdk_client.connect()
+            if attempt > 1:
+                logger.info(f"[CONNECT] Succeeded on attempt {attempt} for thread={thread_ts}")
+            return sdk_client
+        except Exception as e:
+            last_error = e
+            is_init_timeout = "Control request timeout: initialize" in str(e)
+            if is_init_timeout and attempt < _INIT_MAX_RETRIES:
+                logger.warning(
+                    f"[CONNECT] Initialize timeout on attempt {attempt} for thread={thread_ts}, retrying..."
+                )
+                # Clean up the failed client
+                try:
+                    await sdk_client.abort()
+                except Exception:
+                    pass
+                await asyncio.sleep(2)
+            else:
+                raise last_error
 
 
 async def _collect_response(
@@ -271,12 +312,9 @@ async def _new_session_and_query(
     mcp_server_names: list[str] = None,
     mcp_tool_catalog: str = "",
     knowledge_index_file: str = "",
-    gitnexus_available: bool = False,
     knowledge_dirs: list[str] = None,
 ) -> tuple[str, dict | None]:
     """Create a new SDK session and query it."""
-    from claude_agent_sdk import ClaudeSDKClient
-
     options = create_options_fn(
         config,
         model=model,
@@ -284,11 +322,9 @@ async def _new_session_and_query(
         mcp_server_names=mcp_server_names,
         mcp_tool_catalog=mcp_tool_catalog,
         knowledge_index_file=knowledge_index_file,
-        gitnexus_available=gitnexus_available,
         knowledge_dirs=knowledge_dirs,
     )
-    sdk_client = ClaudeSDKClient(options=options)
-    await sdk_client.connect()
+    sdk_client = await _connect_with_retry(options, thread_ts=thread_ts)
     cli_pid = _get_cli_pid(sdk_client)
 
     loop = asyncio.get_event_loop()
@@ -332,12 +368,9 @@ async def _restore_and_query(
     mcp_server_names: list[str] = None,
     mcp_tool_catalog: str = "",
     knowledge_index_file: str = "",
-    gitnexus_available: bool = False,
     knowledge_dirs: list[str] = None,
 ) -> tuple[str, dict | None]:
     """Restore a session from DB history and query with a new prompt."""
-    from claude_agent_sdk import ClaudeSDKClient
-
     options = create_options_fn(
         config,
         model=model,
@@ -345,11 +378,9 @@ async def _restore_and_query(
         mcp_server_names=mcp_server_names,
         mcp_tool_catalog=mcp_tool_catalog,
         knowledge_index_file=knowledge_index_file,
-        gitnexus_available=gitnexus_available,
         knowledge_dirs=knowledge_dirs,
     )
-    sdk_client = ClaudeSDKClient(options=options)
-    await sdk_client.connect()
+    sdk_client = await _connect_with_retry(options, thread_ts=thread_ts)
     cli_pid = _get_cli_pid(sdk_client)
     logger.info(f"[RESTORE] Replaying {len(history)} messages for thread {thread_ts}")
 
@@ -482,7 +513,6 @@ def invoke_claude_code(
     mcp_server_names: list[str] = None,
     mcp_tool_catalog: str = "",
     knowledge_index_file: str = "",
-    gitnexus_available: bool = False,
     knowledge_dirs: list[str] = None,
 ) -> tuple[str, dict | None]:
     """
@@ -512,7 +542,6 @@ def invoke_claude_code(
         mcp_server_names=mcp_server_names,
         mcp_tool_catalog=mcp_tool_catalog,
         knowledge_index_file=knowledge_index_file,
-        gitnexus_available=gitnexus_available,
         knowledge_dirs=knowledge_dirs,
     )
 

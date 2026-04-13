@@ -134,9 +134,6 @@ class BotConfig:
     # Budget
     daily_budget_usd: float = 500.0  # USD per day
 
-    # GitNexus
-    gitnexus_enabled: str = "auto"  # auto | on | off
-    gitnexus_available: bool = False
 
     # Output
     verbose_progress: bool = False  # Show tool details in progress messages
@@ -210,8 +207,6 @@ class BotConfig:
             knowledge_total_inline_limit=20_000,
             knowledge_index_max_entries=0,  # 0 = unlimited
             daily_budget_usd=float(os.environ.get("DAILY_BUDGET_USD", "0")),
-            gitnexus_enabled=os.environ.get("GITNEXUS_ENABLED", "auto"),
-            gitnexus_available=False,
             codebase_index_max_size=int(os.environ.get("CODEBASE_INDEX_MAX_SIZE", "50000")),
             verbose_progress=os.environ.get("VERBOSE_PROGRESS", "").lower() in ("1", "true", "yes"),
             session_idle_timeout=int(os.environ.get("SESSION_IDLE_TIMEOUT", "0")),

@@ -23,7 +23,6 @@ from shadow_ai.log import setup_logging
 from shadow_ai.knowledge import (
     _build_knowledge_index,
     _build_codebase_index,
-    _check_gitnexus_available,
 )
 from shadow_ai.mcp import discover_mcp_server_names, discover_mcp_tools
 from shadow_ai.db import init_db, db_get_active_thread_count, db_stop_thread, db_is_active_thread
@@ -53,7 +52,6 @@ CODEBASE_INDEX: str = ""
 KNOWLEDGE_INDEX_FILE: str = ""
 MCP_SERVER_NAMES: list[str] = []
 MCP_TOOL_CATALOG: str = ""
-GITNEXUS_AVAILABLE: bool = False
 
 # Thread pool and per-thread locks
 executor: ThreadPoolExecutor | None = None
@@ -81,7 +79,7 @@ def remove_thread_lock(thread_ts: str):
 def main():
     global app, slack_client, executor
     global BOT_USER_ID, KNOWLEDGE_INDEX, KNOWLEDGE_INLINE, KNOWLEDGE_DIRS
-    global CODEBASE_INDEX, KNOWLEDGE_INDEX_FILE, MCP_TOOL_CATALOG, GITNEXUS_AVAILABLE
+    global CODEBASE_INDEX, KNOWLEDGE_INDEX_FILE, MCP_TOOL_CATALOG
 
     # 1. Load config from environment
     config = BotConfig.from_env()
@@ -176,25 +174,14 @@ def main():
     else:
         logger.info("No KNOWLEDGE_PATHS configured. Set it to enable knowledge base.")
 
-    # 5. Check GitNexus availability (primary code intelligence)
-    if config.gitnexus_enabled != "off":
-        GITNEXUS_AVAILABLE = _check_gitnexus_available()
-        if GITNEXUS_AVAILABLE:
-            logger.info("[GITNEXUS] Available -- using as primary code intelligence")
-        else:
-            logger.info("[GITNEXUS] Not available -- using regex codebase index as fallback")
-
-    # 6. Build codebase & docs index (skip if GitNexus provides on-demand intelligence)
+    # 5. Build codebase & docs index
     index_paths = config.knowledge_paths or [config.claude_work_dir]
-    if not GITNEXUS_AVAILABLE:
-        CODEBASE_INDEX = _build_codebase_index(index_paths, config.codebase_index_max_size)
-        if CODEBASE_INDEX:
-            sig_count = CODEBASE_INDEX.count("\n  ")
-            logger.info(f"[CODEBASE INDEX] Built: ~{sig_count} signatures, {len(CODEBASE_INDEX)} chars")
-        else:
-            logger.info("[CODEBASE INDEX] No index built (no matching source files found)")
+    CODEBASE_INDEX = _build_codebase_index(index_paths, config.codebase_index_max_size)
+    if CODEBASE_INDEX:
+        sig_count = CODEBASE_INDEX.count("\n  ")
+        logger.info(f"[CODEBASE INDEX] Built: ~{sig_count} signatures, {len(CODEBASE_INDEX)} chars")
     else:
-        logger.info("[CODEBASE INDEX] Skipped -- GitNexus provides on-demand code intelligence")
+        logger.info("[CODEBASE INDEX] No index built (no matching source files found)")
 
     # 7. Write combined knowledge index to disk (read on demand, not injected into system prompt)
     if KNOWLEDGE_INDEX or KNOWLEDGE_INLINE or CODEBASE_INDEX:

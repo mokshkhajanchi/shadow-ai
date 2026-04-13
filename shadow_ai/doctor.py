@@ -92,14 +92,14 @@ def run_doctor():
                       "Run `shadow-ai init` or `mkdir -p knowledge/notes`")
 
     # 9. MCP servers
-    mcp_count = 0
     settings_path = Path.home() / ".claude" / "settings.json"
+    settings_data = {}
     if settings_path.exists():
         try:
-            data = json.loads(settings_path.read_text())
-            mcp_count = len(data.get("mcpServers", {}))
+            settings_data = json.loads(settings_path.read_text())
         except (json.JSONDecodeError, OSError):
             pass
+    mcp_count = len(settings_data.get("mcpServers", {}))
     detail = f"{mcp_count} server{'s' if mcp_count != 1 else ''} configured" if mcp_count > 0 else "none (optional)"
     _check("MCP servers", True, detail)  # always passes — MCP is optional
 

@@ -47,23 +47,30 @@ def load_skills(*skill_dirs: str | Path) -> dict[str, dict]:
         if not source_path.is_dir():
             continue
 
-        for skill_dir in sorted(source_path.iterdir()):
-            if not skill_dir.is_dir():
-                continue
-            skill_file = skill_dir / "SKILL.md"
-            if not skill_file.exists():
-                continue
+        # Scan top-level and custom/ subdirectory for skill directories
+        scan_dirs = [source_path]
+        custom_path = source_path / "custom"
+        if custom_path.is_dir():
+            scan_dirs.append(custom_path)
 
-            parsed = _parse_skill_md(skill_file)
-            if not parsed:
-                logger.warning(f"[SKILLS] Skipped invalid skill: {skill_dir.name}")
-                continue
+        for parent in scan_dirs:
+            for skill_dir in sorted(parent.iterdir()):
+                if not skill_dir.is_dir() or skill_dir.name == "custom":
+                    continue
+                skill_file = skill_dir / "SKILL.md"
+                if not skill_file.exists():
+                    continue
 
-            skills[parsed["name"]] = {
-                "description": parsed["description"],
-                "content": parsed["content"],
-            }
-            logger.info(f"[SKILLS] Loaded: {parsed['name']}")
+                parsed = _parse_skill_md(skill_file)
+                if not parsed:
+                    logger.warning(f"[SKILLS] Skipped invalid skill: {skill_dir.name}")
+                    continue
+
+                skills[parsed["name"]] = {
+                    "description": parsed["description"],
+                    "content": parsed["content"],
+                }
+                logger.info(f"[SKILLS] Loaded: {parsed['name']}")
 
     return skills
 

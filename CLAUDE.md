@@ -134,6 +134,15 @@ Claude handles note-saving naturally via the Write tool — no keyword detection
 
 Four tables: `threads` (thread_ts PK, channel, status), `messages` (thread_ts FK, role, content), `usage` (cost_usd, duration_ms, num_turns), `monitored_channels` (channel_id PK, channel_name, added_by).
 
+## Version Bumps
+
+When bumping the version, update ALL of these locations:
+1. `pyproject.toml` → `version = "X.Y.Z"`
+2. `shadow_ai/__init__.py` → `__version__ = "X.Y.Z"`
+3. `git tag vX.Y.Z` after committing
+
+All three must match. Check existing tags with `git tag --sort=-v:refname` before choosing the next version.
+
 ## Commit Rules
 
 **Run tests before every commit. No exceptions.**

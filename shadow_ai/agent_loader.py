@@ -71,7 +71,7 @@ def load_agents(*agent_dirs: str | Path) -> dict:
         agents_path = Path(agents_dir)
         if not agents_path.is_dir():
             continue
-        for md_file in sorted(agents_path.glob("*.md")):
+        for md_file in sorted(agents_path.glob("**/*.md")):
             parsed = _parse_agent_md(md_file)
             if not parsed:
                 logger.warning(f"[AGENTS] Skipped invalid agent file: {md_file}")

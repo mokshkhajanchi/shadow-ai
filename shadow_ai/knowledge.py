@@ -221,25 +221,9 @@ def _build_codebase_index(
     )
 
 
-# ─── GitNexus availability check ─────────────────────────────────────────────
-
-def _check_gitnexus_available() -> bool:
-    """Check if GitNexus CLI is installed and has indexed repos."""
-    try:
-        result = subprocess.run(
-            ["npx", "-y", "gitnexus", "list"],
-            capture_output=True, text=True, timeout=15,
-        )
-        if result.returncode != 0:
-            return False
-        return bool(result.stdout.strip())
-    except Exception:
-        return False
-
-
 # ─── Knowledge Index Rebuild ──────────────────────────────────────────────────
 
-def rebuild_knowledge_index(knowledge_paths, cwd, inline_threshold=10_000, total_inline_limit=20_000, index_max_entries=0, codebase_max_size=50_000, gitnexus_available=False):
+def rebuild_knowledge_index(knowledge_paths, cwd, inline_threshold=10_000, total_inline_limit=20_000, index_max_entries=0, codebase_max_size=50_000):
     """Rebuild the .knowledge-index.md file from current knowledge paths.
 
     Call this after saving new knowledge files so they're immediately discoverable.
@@ -251,9 +235,7 @@ def rebuild_knowledge_index(knowledge_paths, cwd, inline_threshold=10_000, total
         knowledge_paths, inline_threshold, total_inline_limit, index_max_entries,
     )
 
-    codebase_index = ""
-    if not gitnexus_available:
-        codebase_index = _build_codebase_index(knowledge_paths or [cwd], codebase_max_size)
+    codebase_index = _build_codebase_index(knowledge_paths or [cwd], codebase_max_size)
 
     if index_str or inline_str or codebase_index:
         index_path = Path(cwd).resolve() / ".knowledge-index.md"

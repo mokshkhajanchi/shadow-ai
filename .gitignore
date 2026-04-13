@@ -36,5 +36,14 @@ thread_contexts.json
 .DS_Store
 .claude/
 
+# Custom user content (personal agents, workflows, skills)
+agents/custom/*
+workflows/custom/*
+skills/custom/*
+!agents/custom/.gitkeep
+!workflows/custom/.gitkeep
+!skills/custom/.gitkeep
+
 # Legacy
 legacy/
+.gitnexus

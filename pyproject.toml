@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "shadow-ai"
-version = "1.0.0"
+version = "2.2.0"
 description = "shadow.ai — Your AI co-worker that handles everyday tasks via Slack"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -14,7 +14,7 @@ keywords = ["slack", "claude", "ai", "bot", "agent", "claude-code"]
 dependencies = [
     "slack-bolt>=1.18.0",
     "slack-sdk>=3.27.0",
-    "claude-agent-sdk>=0.1.48",
+    "claude-agent-sdk>=0.1.58",
     "anyio>=4.0.0",
     "python-dotenv>=1.0.0",
     "httpx>=0.24.0",

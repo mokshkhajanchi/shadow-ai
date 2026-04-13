@@ -23,6 +23,7 @@ class TestBotConfig:
             "CLAUDE_MAX_TURNS": "30",
             "CLAUDE_PERMISSION_MODE": "acceptEdits",
             "MAX_ACTIVE_SESSIONS": "3",
+            "MAX_CONCURRENT": "5",
         }
         with patch.dict(os.environ, env, clear=True):
             config = BotConfig.from_env()
