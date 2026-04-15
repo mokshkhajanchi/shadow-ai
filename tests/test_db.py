@@ -75,3 +75,44 @@ class TestMessageOperations:
         db_create_thread(db_path, "1.1", "C0001")
         messages = db_get_thread_messages(db_path, "1.1")
         assert messages == []
+
+
+from shadow_ai.db import (
+    db_set_claude_session_id,
+    db_get_claude_session_id,
+    db_clear_claude_session_id,
+)
+
+
+class TestClaudeSessionId:
+    def test_null_by_default(self, db_path):
+        db_create_thread(db_path, "1.1", "C0001")
+        assert db_get_claude_session_id(db_path, "1.1") is None
+
+    def test_set_and_get(self, db_path):
+        db_create_thread(db_path, "1.1", "C0001")
+        db_set_claude_session_id(db_path, "1.1", "sess-abc-123")
+        assert db_get_claude_session_id(db_path, "1.1") == "sess-abc-123"
+
+    def test_overwrite(self, db_path):
+        db_create_thread(db_path, "1.1", "C0001")
+        db_set_claude_session_id(db_path, "1.1", "sess-old")
+        db_set_claude_session_id(db_path, "1.1", "sess-new")
+        assert db_get_claude_session_id(db_path, "1.1") == "sess-new"
+
+    def test_clear(self, db_path):
+        db_create_thread(db_path, "1.1", "C0001")
+        db_set_claude_session_id(db_path, "1.1", "sess-abc")
+        db_clear_claude_session_id(db_path, "1.1")
+        assert db_get_claude_session_id(db_path, "1.1") is None
+
+    def test_get_for_nonexistent_thread(self, db_path):
+        assert db_get_claude_session_id(db_path, "does-not-exist") is None
+
+    def test_migration_idempotent(self, db_path):
+        # init_db was called once by the fixture; calling it again must not error
+        init_db(db_path)
+        init_db(db_path)
+        db_create_thread(db_path, "1.1", "C0001")
+        db_set_claude_session_id(db_path, "1.1", "sess-xyz")
+        assert db_get_claude_session_id(db_path, "1.1") == "sess-xyz"

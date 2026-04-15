@@ -97,6 +97,11 @@ def init_db(db_path: str):
                 conn.execute("ALTER TABLE monitored_channels ADD COLUMN channel_name TEXT")
             except sqlite3.OperationalError:
                 pass  # column already exists
+            # Migrate: add claude_session_id to threads if missing
+            try:
+                conn.execute("ALTER TABLE threads ADD COLUMN claude_session_id TEXT")
+            except sqlite3.OperationalError:
+                pass  # column already exists
             conn.commit()
     logger.info(f"Database initialized at {db_path}")
 
@@ -174,6 +179,40 @@ def db_set_last_slack_ts(db_path: str, thread_ts: str, slack_ts: str):
             conn.execute(
                 "UPDATE threads SET last_slack_ts = ?, updated_at = ? WHERE thread_ts = ?",
                 (slack_ts, now, thread_ts),
+            )
+            conn.commit()
+
+
+def db_set_claude_session_id(db_path: str, thread_ts: str, session_id: str):
+    """Persist the Claude SDK session_id for a thread so we can resume later."""
+    now = datetime.now().isoformat()
+    with _db_lock:
+        with _db_conn(db_path) as conn:
+            conn.execute(
+                "UPDATE threads SET claude_session_id = ?, updated_at = ? WHERE thread_ts = ?",
+                (session_id, now, thread_ts),
+            )
+            conn.commit()
+
+
+def db_get_claude_session_id(db_path: str, thread_ts: str) -> str | None:
+    """Get the Claude SDK session_id for a thread (None if not set or thread missing)."""
+    with _db_lock:
+        with _db_conn(db_path) as conn:
+            row = conn.execute(
+                "SELECT claude_session_id FROM threads WHERE thread_ts = ?", (thread_ts,)
+            ).fetchone()
+    return row["claude_session_id"] if row and row["claude_session_id"] else None
+
+
+def db_clear_claude_session_id(db_path: str, thread_ts: str):
+    """Clear the stored Claude SDK session_id (e.g. when resume fails because it's stale)."""
+    now = datetime.now().isoformat()
+    with _db_lock:
+        with _db_conn(db_path) as conn:
+            conn.execute(
+                "UPDATE threads SET claude_session_id = NULL, updated_at = ? WHERE thread_ts = ?",
+                (now, thread_ts),
             )
             conn.commit()
 
