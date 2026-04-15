@@ -44,6 +44,9 @@ skills/custom/*
 !workflows/custom/.gitkeep
 !skills/custom/.gitkeep
 
+# Internal planning / design docs
+docs/
+
 # Legacy
 legacy/
 .gitnexus
