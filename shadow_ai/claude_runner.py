@@ -73,6 +73,7 @@ async def _collect_response(
     slack_client=None,
     markdown_to_slack=None,
     verbose_progress: bool = False,
+    db_set_claude_session_id_fn=None,
 ) -> tuple[str, dict | None]:
     """
     Collect response from SDK client.
@@ -214,6 +215,14 @@ async def _collect_response(
                     "usage": message.usage,
                 }
 
+                # Persist SDK session_id so future sessions can resume with full context.
+                # Any DB error is swallowed — it must not break the user-facing response.
+                if db_set_claude_session_id_fn and message.session_id and thread_ts:
+                    try:
+                        db_set_claude_session_id_fn(thread_ts, message.session_id)
+                    except Exception as e:
+                        logger.warning(f"[SESSION-ID] Persist failed for {thread_ts}: {e}")
+
             else:
                 # Catch-all for any other message types (StreamEvent, etc.)
                 logger.info(f"[CC:{thread_ts}] {msg_type}: {str(message)[:300]}")
@@ -313,6 +322,7 @@ async def _new_session_and_query(
     mcp_tool_catalog: str = "",
     knowledge_index_file: str = "",
     knowledge_dirs: list[str] = None,
+    db_set_claude_session_id_fn=None,
 ) -> tuple[str, dict | None]:
     """Create a new SDK session and query it."""
     options = create_options_fn(
@@ -344,7 +354,7 @@ async def _new_session_and_query(
             await sdk_client.query(_message_stream())
         else:
             await sdk_client.query(prompt)
-        return await _collect_response(sdk_client, thread_ts=thread_ts, channel=channel, progress_ts=progress_ts, slack_client=slack_client, verbose_progress=getattr(config, 'verbose_progress', False))
+        return await _collect_response(sdk_client, thread_ts=thread_ts, channel=channel, progress_ts=progress_ts, slack_client=slack_client, verbose_progress=getattr(config, 'verbose_progress', False), db_set_claude_session_id_fn=db_set_claude_session_id_fn)
     finally:
         if mark_session_processing_fn:
             mark_session_processing_fn(thread_ts, False)
@@ -369,6 +379,7 @@ async def _restore_and_query(
     mcp_tool_catalog: str = "",
     knowledge_index_file: str = "",
     knowledge_dirs: list[str] = None,
+    db_set_claude_session_id_fn=None,
 ) -> tuple[str, dict | None]:
     """Restore a session from DB history and query with a new prompt."""
     options = create_options_fn(
@@ -416,7 +427,7 @@ async def _restore_and_query(
         else:
             await sdk_client.query(context_prompt)
         channel = db_get_thread_channel_fn(thread_ts)
-        return await _collect_response(sdk_client, thread_ts=thread_ts, channel=channel, progress_ts=progress_ts, slack_client=slack_client, verbose_progress=getattr(config, 'verbose_progress', False))
+        return await _collect_response(sdk_client, thread_ts=thread_ts, channel=channel, progress_ts=progress_ts, slack_client=slack_client, verbose_progress=getattr(config, 'verbose_progress', False), db_set_claude_session_id_fn=db_set_claude_session_id_fn)
     finally:
         if mark_session_processing_fn:
             mark_session_processing_fn(thread_ts, False)
@@ -432,6 +443,7 @@ async def _continue_query(
     slack_client=None,
     db_get_thread_channel_fn=None,
     verbose_progress: bool = False,
+    db_set_claude_session_id_fn=None,
 ) -> tuple[str, dict | None]:
     """Continue an existing session with a new prompt."""
     if file_blocks:
@@ -444,7 +456,7 @@ async def _continue_query(
     else:
         await sdk_client.query(prompt)
     channel = db_get_thread_channel_fn(thread_ts) if thread_ts else None
-    return await _collect_response(sdk_client, thread_ts=thread_ts, channel=channel, progress_ts=progress_ts, slack_client=slack_client, verbose_progress=verbose_progress)
+    return await _collect_response(sdk_client, thread_ts=thread_ts, channel=channel, progress_ts=progress_ts, slack_client=slack_client, verbose_progress=verbose_progress, db_set_claude_session_id_fn=db_set_claude_session_id_fn)
 
 
 def _run_in_new_loop(coro_factory, thread_ts: str, request_timeout: int, *args, **kwargs):
@@ -514,6 +526,7 @@ def invoke_claude_code(
     mcp_tool_catalog: str = "",
     knowledge_index_file: str = "",
     knowledge_dirs: list[str] = None,
+    db_set_claude_session_id_fn=None,
 ) -> tuple[str, dict | None]:
     """
     Synchronous entry point. Called from the thread pool.
@@ -543,6 +556,7 @@ def invoke_claude_code(
         mcp_tool_catalog=mcp_tool_catalog,
         knowledge_index_file=knowledge_index_file,
         knowledge_dirs=knowledge_dirs,
+        db_set_claude_session_id_fn=db_set_claude_session_id_fn,
     )
 
     if session:
@@ -558,6 +572,7 @@ def invoke_claude_code(
                     slack_client=slack_client,
                     db_get_thread_channel_fn=db_get_thread_channel_fn,
                     verbose_progress=getattr(config, 'verbose_progress', False),
+                    db_set_claude_session_id_fn=db_set_claude_session_id_fn,
                 ),
                 loop,
             )

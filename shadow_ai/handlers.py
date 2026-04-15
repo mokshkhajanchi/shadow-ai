@@ -19,6 +19,7 @@ from shadow_ai.db import (
     db_get_total_cost,
     db_save_message,
     db_save_usage,
+    db_set_claude_session_id,
     db_set_last_slack_ts,
 )
 from shadow_ai.sessions import (
@@ -318,6 +319,7 @@ def _process_message(
                 store_session_fn=store_session,
                 db_get_thread_messages_fn=lambda ts: db_get_thread_messages(db_path, ts),
                 db_get_thread_channel_fn=lambda ts: db_get_thread_channel(db_path, ts),
+                db_set_claude_session_id_fn=lambda ts, sid: db_set_claude_session_id(db_path, ts, sid),
                 create_options_fn=_effective_create_options_fn,
                 mcp_server_names=mcp_server_names or [],
                 mcp_tool_catalog=mcp_tool_catalog,
