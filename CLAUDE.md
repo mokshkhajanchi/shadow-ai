@@ -41,8 +41,9 @@ python -m evals.live --channel C0AQ61HQ550 --category pr_review     # Run single
 ```
 Slack @mention/DM → events.py → handle_user_message() → _process_message() → invoke_claude_code()
                                                                                     ↓
-                                                              Continue (existing session)
-                                                              Restore (from DB history)
+                                                              Continue (in-memory session)
+                                                              Resume (SDK-native, from session_id)
+                                                              Restore (text-replay from DB history)
                                                               New (fresh session)
 ```
 
@@ -51,7 +52,7 @@ Slack @mention/DM → events.py → handle_user_message() → _process_message()
 - **`app.py`** — Entry point. Creates Slack Bolt app, initializes DB, discovers MCP servers, installs skills, runs migrations, starts Socket Mode listener.
 - **`events.py`** — Slack event handlers (`app_mention`, `message`, `app_home_opened`, actions). Handles channel monitoring routing and noise filtering. No slash commands — everything via @mention.
 - **`handlers.py`** — Core message processing. Bot commands (status, kill all, monitor, run workflow, summarize, review, test) parsed before Claude invocation. Monitored channel prefix with security guardrails and anti-hallucination rules injected here.
-- **`claude_runner.py`** — Claude Code SDK lifecycle. Three paths: `_continue_query()`, `_restore_and_query()`, `_new_session_and_query()`. Each runs in a dedicated thread with its own asyncio event loop.
+- **`claude_runner.py`** — Claude Code SDK lifecycle. Four paths: `_continue_query()` (active in-memory session), `_resume_and_query()` (SDK-native resume via stored `session_id`), `_restore_and_query()` (text-replay from DB history — fallback when resume fails), `_new_session_and_query()`. Each runs in a dedicated thread with its own asyncio event loop.
 - **`claude_options.py`** — Builds `ClaudeAgentOptions` with system prompt (identity + response style + anti-hallucination + skills + notes), tool restrictions, model selection (default: opus), thinking mode. Loads agents and skills.
 - **`guardrails.py`** — Code-level security for monitored channels. `can_use_tool` callback blocks destructive commands, secret reads, browser tools before execution.
 - **`workflow_loader.py`** — Loads workflow templates from `workflows/`, parses parameters, builds prompts.

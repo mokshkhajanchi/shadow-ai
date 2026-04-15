@@ -685,14 +685,14 @@ def invoke_claude_code(
             # Stale session_id (SDK transcript expired) or any other resume failure:
             # clear the dead id and fall through to text-replay. Zero user-facing impact.
             logger.info(
-                f"[RESUME FAIL] thread={thread_ts}, falling back to text-replay: "
+                f"[RESUME-FAIL] thread={thread_ts}, falling back to text-replay: "
                 f"{type(e).__name__}: {e}"
             )
             if db_clear_claude_session_id_fn:
                 try:
                     db_clear_claude_session_id_fn(thread_ts)
                 except Exception as ce:
-                    logger.warning(f"[RESUME FAIL] clear session_id failed for {thread_ts}: {ce}")
+                    logger.warning(f"[RESUME-FAIL] clear session_id failed for {thread_ts}: {ce}")
 
     if history:
         logger.info(f"[RESTORE] thread={thread_ts}, {len(history)} messages in DB")
