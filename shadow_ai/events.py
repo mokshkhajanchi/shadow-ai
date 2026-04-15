@@ -15,13 +15,11 @@ from shadow_ai.db import (
     db_get_total_cost,
     db_is_active_thread,
     db_is_monitored_channel,
-    db_stop_thread,
 )
 from shadow_ai.sessions import (
     get_active_session_count,
     get_session,
     kill_all_sessions,
-    remove_session,
 )
 from shadow_ai.slack_helpers import (
     chunk_message,
