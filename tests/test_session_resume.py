@@ -167,3 +167,33 @@ def test_missing_injection_fns_do_not_break_flow(monkeypatch):
     )
     invoke_claude_code("msg", "1.1", **kwargs)
     assert calls == ["_restore_and_query"]
+
+
+def test_resume_failure_with_empty_history_falls_through_to_new_session(monkeypatch):
+    """Edge: session_id exists but resume fails AND history is empty → _new_session_and_query.
+
+    Covers the (rare) case where the DB has a stale claude_session_id but the messages
+    table has been pruned. Ensures we don't deadlock trying to text-replay nothing.
+    """
+    from shadow_ai import claude_runner
+
+    calls = []
+
+    def fake_run_in_new_loop(coro_factory, thread_ts, request_timeout, *args, **kwargs):
+        calls.append(coro_factory.__name__)
+        if coro_factory.__name__ == "_resume_and_query":
+            raise RuntimeError("stale")
+        return ("ok", None)
+
+    monkeypatch.setattr(claude_runner, "_run_in_new_loop", fake_run_in_new_loop)
+
+    clear_mock = MagicMock()
+    kwargs = _make_session_kwargs(
+        db_get_thread_messages_fn=MagicMock(return_value=[]),  # empty history
+        db_get_claude_session_id_fn=MagicMock(return_value="sess-stale"),
+        db_clear_claude_session_id_fn=clear_mock,
+        db_set_claude_session_id_fn=MagicMock(),
+    )
+    invoke_claude_code("msg", "1.1", **kwargs)
+    assert calls == ["_resume_and_query", "_new_session_and_query"]
+    clear_mock.assert_called_once_with("1.1")

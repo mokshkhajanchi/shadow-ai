@@ -674,6 +674,7 @@ def invoke_claude_code(
     if claude_session_id:
         try:
             logger.info(f"[RESUME-TRY] thread={thread_ts}, session_id={claude_session_id}")
+            # SDK-native resume: loads full prior transcript (tool calls, thinking) from disk
             return _run_in_new_loop(
                 _resume_and_query, thread_ts, request_timeout,
                 claude_session_id, prompt, thread_ts, progress_ts, file_blocks,
@@ -695,6 +696,7 @@ def invoke_claude_code(
 
     if history:
         logger.info(f"[RESTORE] thread={thread_ts}, {len(history)} messages in DB")
+        # Text-replay fallback: rebuild context from DB messages (lossy — no tool-use state)
         return _run_in_new_loop(
             _restore_and_query, thread_ts, request_timeout,
             history, prompt, thread_ts, progress_ts, file_blocks,
