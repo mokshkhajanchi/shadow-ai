@@ -118,6 +118,7 @@ def create_options(
     knowledge_index_file: str = "",
     knowledge_dirs: list[str] | None = None,
     monitored: bool = False,
+    resume: str | None = None,
 ):
     """
     Build a ClaudeAgentOptions instance for a new or restored SDK session.
@@ -165,7 +166,7 @@ def create_options(
             if wildcard not in allowed_tools:
                 allowed_tools.append(wildcard)
 
-    opts = ClaudeAgentOptions(
+    opts_kwargs = dict(
         allowed_tools=allowed_tools,
         permission_mode=permission_mode,
         cwd=cwd,
@@ -173,6 +174,9 @@ def create_options(
         setting_sources=["user", "project"],
         max_buffer_size=10 * 1024 * 1024,  # 10MB (default 1MB too small for large fixtures)
     )
+    if resume:
+        opts_kwargs["resume"] = resume
+    opts = ClaudeAgentOptions(**opts_kwargs)
 
     # Code-level guardrails for monitored channels
     if monitored:
