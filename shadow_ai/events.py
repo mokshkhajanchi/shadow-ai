@@ -27,7 +27,6 @@ from shadow_ai.slack_helpers import (
     chunk_message,
     markdown_to_slack,
     pop_detail,
-    send_session_ended,
 )
 from shadow_ai.handlers import handle_user_message, is_authorized
 
@@ -268,29 +267,6 @@ def register_events(
     @app.event("app_home_opened")
     def _handle_app_home_opened(event, logger):
         _render_app_home(event.get("user"), slack_client, config)
-
-    # ── stop_session action (button) ─────────────────────────────────────
-
-    @app.action("stop_session")
-    def _handle_stop_session(ack, body):
-        ack()
-
-        user_id = body.get("user", {}).get("id")
-        actions = body.get("actions", [])
-        thread_ts = actions[0].get("value") if actions else None
-        channel = body.get("channel", {}).get("id")
-
-        if not thread_ts:
-            return
-
-        logger.info(f"[STOP] thread={thread_ts} by user={user_id}")
-
-        remove_session(thread_ts)
-        db_stop_thread(db_path, thread_ts)
-        remove_thread_lock_fn(thread_ts)
-
-        if channel:
-            send_session_ended(slack_client, channel, thread_ts)
 
     # ── show_details action (button) ─────────────────────────────────────
 

@@ -39,8 +39,7 @@ from shadow_ai.slack_helpers import (
     fetch_thread_messages,
     markdown_to_slack,
     parse_model_prefix,
-    send_response_with_stop_button,
-    send_session_ended,
+    send_response_with_details_button,
 )
 from shadow_ai.claude_runner import invoke_claude_code
 from shadow_ai.commands import (
@@ -298,7 +297,7 @@ def _process_message(
             resp = _scrub_paths(resp)
             tagline = f"\n\n_sent by {config.bot_identity}_"
             resp = resp.rstrip() + tagline
-            send_response_with_stop_button(slack_client, ch, ts, resp)
+            send_response_with_details_button(slack_client, ch, ts, resp)
 
         # Wrap create_options_fn with monitored flag if needed
         _effective_create_options_fn = create_options_fn

@@ -197,8 +197,8 @@ def _build_section_blocks(text: str) -> list[dict]:
 
 # ─── Slack message sending ───────────────────────────────────────────────────
 
-def send_response_with_stop_button(slack_client, channel: str, thread_ts: str, text: str, bot_user_id: str = None):
-    """Send a response message with optional Show Details and Stop Session buttons.
+def send_response_with_details_button(slack_client, channel: str, thread_ts: str, text: str, bot_user_id: str = None):
+    """Send a response message with an optional Show Details button.
 
     Args:
         slack_client: Slack WebClient instance.
@@ -218,29 +218,20 @@ def send_response_with_stop_button(slack_client, channel: str, thread_ts: str, t
         summary = parts[0].strip()
         details = parts[1].strip()
 
-    # Send summary with Stop Session button (and Show Details if applicable)
     blocks = _build_section_blocks(summary)
 
-    action_elements = []
     if details:
         # Store details for retrieval on button click
         detail_id = store_detail(details, thread_ts)
-        action_elements.append({
-            "type": "button",
-            "text": {"type": "plain_text", "text": ":mag: Show Details", "emoji": True},
-            "action_id": "show_details",
-            "value": detail_id,
+        blocks.append({
+            "type": "actions",
+            "elements": [{
+                "type": "button",
+                "text": {"type": "plain_text", "text": ":mag: Show Details", "emoji": True},
+                "action_id": "show_details",
+                "value": detail_id,
+            }],
         })
-
-    action_elements.append({
-        "type": "button",
-        "text": {"type": "plain_text", "text": ":octagonal_sign: Stop Session", "emoji": True},
-        "style": "danger",
-        "action_id": "stop_session",
-        "value": thread_ts,
-    })
-
-    blocks.append({"type": "actions", "elements": action_elements})
 
     slack_client.chat_postMessage(
         channel=channel,
@@ -300,10 +291,3 @@ def fetch_thread_messages(slack_client, channel: str, thread_ts: str, bot_user_i
         return "", None
 
 
-def send_session_ended(slack_client, channel: str, thread_ts: str):
-    """Send the 'session ended' message."""
-    slack_client.chat_postMessage(
-        channel=channel,
-        thread_ts=thread_ts,
-        text=":white_check_mark: *Session ended.* Mention me again to start a new one.",
-    )
