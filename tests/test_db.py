@@ -12,6 +12,9 @@ from shadow_ai.db import (
     db_save_message,
     db_get_thread_messages,
     db_get_thread_channel,
+    db_set_claude_session_id,
+    db_get_claude_session_id,
+    db_clear_claude_session_id,
 )
 
 
@@ -76,12 +79,6 @@ class TestMessageOperations:
         messages = db_get_thread_messages(db_path, "1.1")
         assert messages == []
 
-
-from shadow_ai.db import (
-    db_set_claude_session_id,
-    db_get_claude_session_id,
-    db_clear_claude_session_id,
-)
 
 
 class TestClaudeSessionId:
