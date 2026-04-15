@@ -55,3 +55,115 @@ def test_db_set_claude_session_id_called_on_successful_turn(monkeypatch):
     )
     invoke_claude_code("hello", "1.1", **kwargs)
     assert recorded == [("1.1", "sess-abc-123")]
+
+
+def test_resume_used_when_claude_session_id_present(monkeypatch):
+    """If DB has a claude_session_id, _resume_and_query is chosen over _restore_and_query."""
+    from shadow_ai import claude_runner
+
+    calls = []
+
+    def fake_run_in_new_loop(coro_factory, thread_ts, request_timeout, *args, **kwargs):
+        calls.append(coro_factory.__name__)
+        return ("ok", None)
+
+    monkeypatch.setattr(claude_runner, "_run_in_new_loop", fake_run_in_new_loop)
+
+    kwargs = _make_session_kwargs(
+        db_get_thread_messages_fn=MagicMock(return_value=[{"role": "user", "content": "old"}]),
+        db_get_claude_session_id_fn=MagicMock(return_value="sess-xyz"),
+        db_clear_claude_session_id_fn=MagicMock(),
+        db_set_claude_session_id_fn=MagicMock(),
+    )
+    invoke_claude_code("new msg", "1.1", **kwargs)
+    assert calls == ["_resume_and_query"]
+
+
+def test_fallback_to_text_replay_when_resume_fails(monkeypatch):
+    """If _resume_and_query raises, the stale session_id is cleared and _restore_and_query runs."""
+    from shadow_ai import claude_runner
+
+    calls = []
+
+    def fake_run_in_new_loop(coro_factory, thread_ts, request_timeout, *args, **kwargs):
+        calls.append(coro_factory.__name__)
+        if coro_factory.__name__ == "_resume_and_query":
+            raise RuntimeError("session transcript missing")
+        return ("ok", None)
+
+    monkeypatch.setattr(claude_runner, "_run_in_new_loop", fake_run_in_new_loop)
+
+    clear_mock = MagicMock()
+    kwargs = _make_session_kwargs(
+        db_get_thread_messages_fn=MagicMock(return_value=[{"role": "user", "content": "old"}]),
+        db_get_claude_session_id_fn=MagicMock(return_value="sess-stale"),
+        db_clear_claude_session_id_fn=clear_mock,
+        db_set_claude_session_id_fn=MagicMock(),
+    )
+    invoke_claude_code("new msg", "1.1", **kwargs)
+    assert calls == ["_resume_and_query", "_restore_and_query"]
+    clear_mock.assert_called_once_with("1.1")
+
+
+def test_text_replay_used_when_no_session_id(monkeypatch):
+    """Null claude_session_id - skip resume, go straight to text-replay (existing behavior)."""
+    from shadow_ai import claude_runner
+
+    calls = []
+
+    def fake_run_in_new_loop(coro_factory, thread_ts, request_timeout, *args, **kwargs):
+        calls.append(coro_factory.__name__)
+        return ("ok", None)
+
+    monkeypatch.setattr(claude_runner, "_run_in_new_loop", fake_run_in_new_loop)
+
+    kwargs = _make_session_kwargs(
+        db_get_thread_messages_fn=MagicMock(return_value=[{"role": "user", "content": "old"}]),
+        db_get_claude_session_id_fn=MagicMock(return_value=None),
+        db_clear_claude_session_id_fn=MagicMock(),
+        db_set_claude_session_id_fn=MagicMock(),
+    )
+    invoke_claude_code("new msg", "1.1", **kwargs)
+    assert calls == ["_restore_and_query"]
+
+
+def test_new_session_when_no_history_and_no_session_id(monkeypatch):
+    """Empty history + null session_id - _new_session_and_query (existing behavior)."""
+    from shadow_ai import claude_runner
+
+    calls = []
+
+    def fake_run_in_new_loop(coro_factory, thread_ts, request_timeout, *args, **kwargs):
+        calls.append(coro_factory.__name__)
+        return ("ok", None)
+
+    monkeypatch.setattr(claude_runner, "_run_in_new_loop", fake_run_in_new_loop)
+
+    kwargs = _make_session_kwargs(
+        db_get_thread_messages_fn=MagicMock(return_value=[]),
+        db_get_claude_session_id_fn=MagicMock(return_value=None),
+        db_clear_claude_session_id_fn=MagicMock(),
+        db_set_claude_session_id_fn=MagicMock(),
+    )
+    invoke_claude_code("first msg", "1.1", **kwargs)
+    assert calls == ["_new_session_and_query"]
+
+
+def test_missing_injection_fns_do_not_break_flow(monkeypatch):
+    """If the new DI hooks aren't passed (legacy caller), behavior matches pre-change code path."""
+    from shadow_ai import claude_runner
+
+    calls = []
+
+    def fake_run_in_new_loop(coro_factory, thread_ts, request_timeout, *args, **kwargs):
+        calls.append(coro_factory.__name__)
+        return ("ok", None)
+
+    monkeypatch.setattr(claude_runner, "_run_in_new_loop", fake_run_in_new_loop)
+
+    # No db_get_claude_session_id_fn, no db_clear_claude_session_id_fn, no db_set...
+    kwargs = _make_session_kwargs(
+        db_get_thread_messages_fn=MagicMock(return_value=[{"role": "user", "content": "hi"}]),
+    )
+    invoke_claude_code("msg", "1.1", **kwargs)
+    assert calls == ["_restore_and_query"]

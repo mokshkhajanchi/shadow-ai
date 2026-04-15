@@ -433,6 +433,72 @@ async def _restore_and_query(
             mark_session_processing_fn(thread_ts, False)
 
 
+async def _resume_and_query(
+    claude_session_id: str,
+    new_prompt: str,
+    thread_ts: str,
+    progress_ts: str = None,
+    file_blocks: list = None,
+    model: str = None,
+    thinking_override: str = None,
+    *,
+    config,
+    slack_client=None,
+    store_session_fn=None,
+    mark_session_processing_fn=None,
+    db_get_thread_channel_fn=None,
+    create_options_fn=None,
+    mcp_server_names: list[str] = None,
+    mcp_tool_catalog: str = "",
+    knowledge_index_file: str = "",
+    knowledge_dirs: list[str] = None,
+    db_set_claude_session_id_fn=None,
+) -> tuple[str, dict | None]:
+    """Resume an existing Claude SDK session by session_id and query with a new prompt.
+
+    The SDK loads the full prior transcript from ~/.claude/projects/<hash>/<session_id>.jsonl,
+    so we don't need to re-inject history — unlike _restore_and_query.
+    """
+    options = create_options_fn(
+        config,
+        model=model,
+        thinking_override=thinking_override,
+        mcp_server_names=mcp_server_names,
+        mcp_tool_catalog=mcp_tool_catalog,
+        knowledge_index_file=knowledge_index_file,
+        knowledge_dirs=knowledge_dirs,
+        resume=claude_session_id,
+    )
+    sdk_client = await _connect_with_retry(options, thread_ts=thread_ts)
+    cli_pid = _get_cli_pid(sdk_client)
+    logger.info(f"[RESUME] session_id={claude_session_id} for thread {thread_ts}")
+
+    loop = asyncio.get_event_loop()
+    store_session_fn(thread_ts, sdk_client, loop, cli_pid=cli_pid)
+    if mark_session_processing_fn:
+        mark_session_processing_fn(thread_ts, True)
+
+    try:
+        if file_blocks:
+            content = [{"type": "text", "text": new_prompt}] + file_blocks
+
+            async def _message_stream():
+                yield {"type": "user", "message": {"role": "user", "content": content}, "parent_tool_use_id": None}
+
+            await sdk_client.query(_message_stream())
+        else:
+            await sdk_client.query(new_prompt)
+        channel = db_get_thread_channel_fn(thread_ts)
+        return await _collect_response(
+            sdk_client, thread_ts=thread_ts, channel=channel, progress_ts=progress_ts,
+            slack_client=slack_client, verbose_progress=getattr(config, 'verbose_progress', False),
+            db_set_claude_session_id_fn=db_set_claude_session_id_fn,
+        )
+    finally:
+        if mark_session_processing_fn:
+            mark_session_processing_fn(thread_ts, False)
+
+
 async def _continue_query(
     sdk_client,
     prompt: str,
@@ -520,6 +586,8 @@ def invoke_claude_code(
     mark_session_processing_fn=None,
     store_session_fn=None,
     db_get_thread_messages_fn=None,
+    db_get_claude_session_id_fn=None,
+    db_clear_claude_session_id_fn=None,
     db_get_thread_channel_fn=None,
     create_options_fn=None,
     mcp_server_names: list[str] = None,
@@ -530,7 +598,7 @@ def invoke_claude_code(
 ) -> tuple[str, dict | None]:
     """
     Synchronous entry point. Called from the thread pool.
-    Routes to: continue existing | restore from DB | new session.
+    Routes to: continue existing | resume (SDK-native) | restore from DB | new session.
 
     All dependencies are passed explicitly instead of using globals.
     """
@@ -600,6 +668,30 @@ def invoke_claude_code(
             mark_session_processing_fn(thread_ts, False)
 
     history = db_get_thread_messages_fn(thread_ts)
+    claude_session_id = db_get_claude_session_id_fn(thread_ts) if db_get_claude_session_id_fn else None
+
+    # Try SDK-native resume first — preserves full tool-use context, cheaper than text-replay.
+    if claude_session_id:
+        try:
+            logger.info(f"[RESUME-TRY] thread={thread_ts}, session_id={claude_session_id}")
+            return _run_in_new_loop(
+                _resume_and_query, thread_ts, request_timeout,
+                claude_session_id, prompt, thread_ts, progress_ts, file_blocks,
+                model=model, thinking_override=thinking_override,
+                **session_kwargs,
+            )
+        except Exception as e:
+            # Stale session_id (SDK transcript expired) or any other resume failure:
+            # clear the dead id and fall through to text-replay. Zero user-facing impact.
+            logger.info(
+                f"[RESUME FAIL] thread={thread_ts}, falling back to text-replay: "
+                f"{type(e).__name__}: {e}"
+            )
+            if db_clear_claude_session_id_fn:
+                try:
+                    db_clear_claude_session_id_fn(thread_ts)
+                except Exception as ce:
+                    logger.warning(f"[RESUME FAIL] clear session_id failed for {thread_ts}: {ce}")
 
     if history:
         logger.info(f"[RESTORE] thread={thread_ts}, {len(history)} messages in DB")
