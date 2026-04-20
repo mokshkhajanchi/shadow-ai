@@ -87,17 +87,30 @@ Make the bot auto-reply to messages in a channel:
 @bot monitoring                 — show monitored channels
 ```
 
-The bot joins the channel, replies in threads, uses haiku (cheapest model), and skips noise messages. Each person's bot operates independently — no slash command conflicts.
+The bot joins the channel, replies in threads, and skips noise messages. Each person's bot operates independently — no slash command conflicts.
 
-### Per-Channel Rules
+### Per-Channel Rules (required)
 
-Define how the bot behaves in each channel by creating a rules file in `channels/`:
+**Every monitored channel must have a rules file with a `## When to invoke` section.** `@bot monitor #channel` will refuse to activate without it.
 
+Create `channels/<channel-name>.md` (filename must match the Slack channel name):
+
+```markdown
+## When to invoke
+Invoke for engineering questions, bug reports, or Azure DevOps PR URLs.
+Skip FYIs, status updates, acknowledgments, and messages addressed to
+a specific teammate who isn't the bot.
+
+## How to answer
+- Be concise
+- Always verify with MCP tools before answering
+
+## Domain context
+- This channel is about [topic]
+- Key repos: [list]
 ```
-channels/my-channel.md
-```
 
-The filename must match the Slack channel name. Include guidelines, domain context, constraints — anything the bot should know when replying in that channel. See `channels/example.md` for a template.
+The `## When to invoke` text is injected into Claude's system prompt as an authoritative rule. Messages that don't match get silently suppressed — no reply, no reactions, no trace. The rest of the file is free-form context applied when the bot does engage. See `channels/example.md` for a full template.
 
 ---
 

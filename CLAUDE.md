@@ -20,7 +20,7 @@ shadow-ai init         # Setup wizard (creates .env)
 shadow-ai doctor       # Check prerequisites
 
 # Test
-pytest tests/ -v                          # All tests (196)
+pytest tests/ -v                          # All tests (243)
 pytest tests/test_system_prompt.py -v     # Single file
 pytest tests/ -v --tb=short               # Compact output
 
@@ -109,12 +109,14 @@ Key design decisions:
 ### Channel Monitoring
 
 - `@bot monitor #channel` starts monitoring → bot joins channel, saves to `monitored_channels` DB table
-- Channels with rules file (`channels/<name>.md`) get full tools + guardrails
-- Channels without rules get read-only tools (Read, Glob, Grep)
-- Code-level guardrails: `can_use_tool` callback blocks rm -rf, force push, secret reads, browser tools
-- Monitored prefix includes: security guardrails, anti-hallucination rules, NO_RESPONSE guidance
-- NO_RESPONSE suppression: if response starts with "NO_RESPONSE", suppress posting (questions always get a response)
-- Thread follow-ups require `ALLOWED_USER_IDS` authorization
+- **Mandatory: channels/<name>.md must exist with a `## When to invoke` section.** Without it, `monitor` refuses at setup and the events.py gate drops messages at runtime. On startup, `[RULES]` warnings log every monitored channel missing the section.
+- The `## When to invoke` section is extracted by `shadow_ai/channel_rules.py::extract_invoke_rules` and injected into the monitored system prompt as an AUTHORITATIVE gate above the security block. Claude reads it and emits `NO_RESPONSE` when the message doesn't match — no separate classifier call.
+- Channels with rules file get full tools + guardrails; without a rules file the channel is silent (previously got read-only tools — behavior changed in v2.3.0).
+- Code-level guardrails: `can_use_tool` callback blocks rm -rf, force push, secret reads, browser tools.
+- NO_RESPONSE suppression is FULLY silent — no reply, no `:x:` reaction, no `:robot_face:`. Log line `[MONITOR] Skipped reply (NO_RESPONSE) for thread=...` only.
+- Thread follow-ups in monitored channels bypass the rules classifier (bot committed at top level). In non-monitored channels, thread follow-ups require explicit @-mention — no mid-session continuation.
+- Unauthorized users are silently ignored (log line `[AUTH] Ignored unauthorized user=...`), no Slack post.
+- `bot_id` filter at `events.py:211` allows messages with both `bot_id` and `user` (user-token-posted, e.g. eval harness) through; drops only genuine automated posts (`bot_id` without `user`).
 
 ### Note-Taking
 
@@ -152,7 +154,7 @@ All three must match. Check existing tags with `git tag --sort=-v:refname` befor
 pytest tests/ -v
 ```
 
-All 196 tests must pass before committing.
+All 243 tests must pass before committing.
 
 ## Configuration
 

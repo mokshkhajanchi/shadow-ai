@@ -232,6 +232,26 @@ def main():
     active_count = db_get_active_thread_count(config.db_path)
     logger.info(f"Active threads in DB: {active_count}")
 
+    # Pre-flight: warn if any monitored channels are missing the
+    # `## When to invoke` rules section. Those channels will stay silent
+    # until a valid rules file is added — surface this loudly at startup
+    # so the user isn't left wondering why the bot isn't responding.
+    try:
+        from shadow_ai.channel_rules import extract_invoke_rules, read_channel_rules
+        from shadow_ai.db import db_get_monitored_channels, db_get_channel_name
+        for chan_id in db_get_monitored_channels(config.db_path):
+            chan_name = db_get_channel_name(config.db_path, chan_id)
+            rules_text = read_channel_rules(chan_name, config.claude_work_dir)
+            if not extract_invoke_rules(rules_text):
+                logger.warning(
+                    f"[RULES] Monitored channel {chan_id} "
+                    f"(name={chan_name!r}) has no '## When to invoke' section. "
+                    f"The bot will stay silent here until you add "
+                    f"channels/{chan_name or '<channel-name>'}.md with that section."
+                )
+    except Exception as e:
+        logger.warning(f"[RULES] Startup rules check failed: {type(e).__name__}: {e}")
+
     # Pre-flight: check Azure CLI auth
     try:
         az_result = subprocess.run(
