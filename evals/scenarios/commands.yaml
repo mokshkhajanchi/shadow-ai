@@ -1,0 +1,43 @@
+# Bot-command evals: monitor setup, stop monitoring, and the rules
+# validation that blocks monitoring when a channel has no
+# `## When to invoke` section.
+#
+# These scenarios post bot commands and inspect the bot's confirmation
+# reply. They don't assert state in the DB — that would couple evals to
+# file paths on the bot host. The confirmation text is a reasonable proxy.
+
+- name: "monitor accepts channel with valid rules"
+  category: commands
+  severity: critical
+  input:
+    text: "monitor <#C0AQ61HQ550|shadow-ai-testing>"
+    timeout: 60
+  expected:
+    response_contains:
+      - "Now monitoring"
+    response_not_contains:
+      - "Cannot monitor"
+
+- name: "monitor rejects channel without rules section"
+  category: commands
+  severity: critical
+  input:
+    # This channel ID exists but intentionally has no channels/<name>.md
+    # with a `## When to invoke` section on the bot host. Adjust the ID
+    # to a real Slack channel in your workspace that's missing rules.
+    text: "monitor <#C00UNRULED|channel-without-rules>"
+    timeout: 60
+  expected:
+    response_contains:
+      - "Cannot monitor"
+      - "When to invoke"
+
+- name: "stop monitoring confirms"
+  category: commands
+  severity: normal
+  input:
+    text: "stop monitoring <#C0AQ61HQ550|shadow-ai-testing>"
+    timeout: 30
+  expected:
+    response_contains:
+      - "Stopped monitoring"

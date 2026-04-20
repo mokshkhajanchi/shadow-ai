@@ -1,0 +1,89 @@
+# Routing / reply-policy evals. These cover the core bug where the bot
+# replied to untagged chatter in threads it had previously touched, plus
+# the post-kill-all silence requirement.
+#
+# The reply policy in a non-DM, non-monitored channel is:
+#   Only reply when explicitly @-mentioned. Everything else → silent.
+#
+# These scenarios use multi-step `steps:` to first @-mention (anchoring a
+# thread the bot replies to), then post untagged follow-ups and assert
+# the bot stays silent. Silence is graded PASS — a reply within the
+# step timeout is FAIL.
+
+- name: "bot replies to initial @mention"
+  category: routing
+  severity: critical
+  steps:
+    - action: "message"
+      text: "hello"
+      mention: true
+      timeout: 60
+  expected:
+    response_not_contains:
+      - "not authorized"
+    min_length: 5
+
+- name: "untagged follow-up by authorized user stays silent"
+  category: routing
+  severity: critical
+  steps:
+    - action: "message"
+      text: "hi, this is the initial mention"
+      mention: true
+      timeout: 60
+    - action: "message"
+      text: "Ok. Let me know"
+      mention: false
+      in_thread: true
+      expect_silence: true
+      timeout: 30
+
+- name: "mentioning another user stays silent"
+  category: routing
+  severity: critical
+  steps:
+    - action: "message"
+      text: "setting up the thread"
+      mention: true
+      timeout: 60
+    - action: "message"
+      text: "<@U0361L1S11C> please check this later"
+      mention: false
+      in_thread: true
+      expect_silence: true
+      timeout: 30
+
+- name: "plain chatter in bot-touched thread stays silent"
+  category: routing
+  severity: critical
+  steps:
+    - action: "message"
+      text: "setting up the thread"
+      mention: true
+      timeout: 60
+    - action: "message"
+      text: "just thinking out loud, no action needed"
+      mention: false
+      in_thread: true
+      expect_silence: true
+      timeout: 30
+
+- name: "post-kill-all untagged message stays silent"
+  category: routing
+  severity: critical
+  steps:
+    - action: "message"
+      text: "start a session"
+      mention: true
+      timeout: 60
+    - action: "message"
+      text: "kill all"
+      mention: true
+      in_thread: true
+      timeout: 30
+    - action: "message"
+      text: "one more thing"
+      mention: false
+      in_thread: true
+      expect_silence: true
+      timeout: 30

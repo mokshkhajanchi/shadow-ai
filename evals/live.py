@@ -147,7 +147,18 @@ def extract_cost_from_log(thread_ts: str, log_file: str = "bot.log") -> tuple[fl
 
 def _run_multi_step_scenario(sender: WebClient, reader: WebClient, channel: str,
                               bot_user_id: str, scenario: dict, record: bool = False) -> dict:
-    """Run a multi-step scenario (e.g., save a fact, then recall it in a new thread)."""
+    """Run a multi-step scenario.
+
+    Each step supports these fields:
+      text           — message text
+      action         — save | recall | message | untagged (default: message)
+      wait           — seconds to wait between steps (default 15)
+      mention        — prepend <@bot>? (default True; set False for follow-ups)
+      in_thread      — post as a reply to the first step's thread? (default False)
+      expect_silence — grade step as PASS if the bot does NOT reply within its
+                       own timeout (default False)
+      timeout        — per-step reply timeout in seconds (default RESPONSE_TIMEOUT)
+    """
     from evals.graders.golden import grade_against_golden, save_golden
 
     name = scenario.get("name", "unnamed")
@@ -160,31 +171,58 @@ def _run_multi_step_scenario(sender: WebClient, reader: WebClient, channel: str,
     tool_calls = []
     cost = 0
     duration = 0
+    first_thread_ts = None  # The thread_ts that subsequent in_thread steps reply to
+    silence_checks: dict[str, dict] = {}
 
     for i, step in enumerate(steps):
         action = step.get("action", "message")
         text = step.get("text", "")
-        wait = step.get("wait", 15)
+        mention = step.get("mention", True)
+        in_thread = step.get("in_thread", False)
+        expect_silence = step.get("expect_silence", False)
+        step_timeout = step.get("timeout", RESPONSE_TIMEOUT)
 
-        # All steps use @mention (not monitored)
-        msg_text = f"<@{bot_user_id}> {text}"
-        msg_ts = send_message(sender, channel, msg_text)
-        logger.info(f"[EVAL] Step {i+1}/{len(steps)} ({action}): sent {msg_ts}")
+        msg_text = f"<@{bot_user_id}> {text}" if mention else text
+        thread_ts = first_thread_ts if in_thread else None
+        msg_ts = send_message(sender, channel, msg_text, thread_ts=thread_ts)
+        if first_thread_ts is None:
+            # The first step anchors the thread that later in_thread steps reply to.
+            first_thread_ts = msg_ts
+        logger.info(
+            f"[EVAL] Step {i+1}/{len(steps)} ({action}, mention={mention}, "
+            f"in_thread={in_thread}, expect_silence={expect_silence}): sent {msg_ts}"
+        )
 
-        if action == "save":
-            # Claude now handles saves via Write tool — wait for the actual reply
-            # to confirm the note was saved before proceeding to recall
+        # Decide which thread to poll for a reply (bot replies land under msg_ts for
+        # top-level, or under first_thread_ts for thread replies).
+        poll_ts = first_thread_ts if in_thread else msg_ts
+
+        if expect_silence:
+            # Use a shorter window — if no reply within step_timeout we call PASS.
+            reply = wait_for_bot_reply(reader, channel, poll_ts, bot_user_id, timeout=step_timeout)
+            # Filter to replies that appeared AFTER this step's own ts (so we
+            # don't mistake the earlier @mention's reply for a new one).
+            if reply and reply.get("ts", "0") > msg_ts:
+                silence_checks[f"step_{i+1}_silent"] = {
+                    "pass": False,
+                    "detail": f"Expected silence but bot replied: {reply['text'][:80]}",
+                }
+                logger.warning(f"[EVAL] Step {i+1} UNEXPECTED REPLY: {reply['text'][:80]}")
+            else:
+                silence_checks[f"step_{i+1}_silent"] = {
+                    "pass": True, "detail": "Bot stayed silent (correct)",
+                }
+                logger.info(f"[EVAL] Step {i+1} silence confirmed")
+        elif action == "save":
             logger.info(f"[EVAL] Step {i+1}: save action — waiting for Claude to save and respond")
-            reply = wait_for_bot_reply(reader, channel, msg_ts, bot_user_id)
+            reply = wait_for_bot_reply(reader, channel, poll_ts, bot_user_id, timeout=step_timeout)
             if reply:
                 logger.info(f"[EVAL] Step {i+1}: save confirmed — {reply['text'][:80]}...")
             else:
                 logger.warning(f"[EVAL] Step {i+1}: save may have timed out — no reply")
-            # Extra wait for file to be flushed to disk
             time.sleep(5)
         else:
-            # Non-save steps: wait for actual reply
-            reply = wait_for_bot_reply(reader, channel, msg_ts, bot_user_id)
+            reply = wait_for_bot_reply(reader, channel, poll_ts, bot_user_id, timeout=step_timeout)
 
             if reply:
                 response = reply["text"]
@@ -203,9 +241,15 @@ def _run_multi_step_scenario(sender: WebClient, reader: WebClient, channel: str,
         if i < len(steps) - 1:
             time.sleep(5)
 
-    # Grade the LAST step's response against expected
+    # Grade the LAST non-silence step's response against expected
     from evals.runner import grade_scenario
     result = grade_scenario(scenario, response, tool_calls, cost, duration)
+    # Merge in any silence checks we collected
+    if silence_checks:
+        result.setdefault("checks", {}).update(silence_checks)
+        result["passed"] = all(c["pass"] for c in result["checks"].values())
+        if not result["passed"] and scenario.get("severity") == "critical":
+            result["critical_failed"] = True
 
     if record and response:
         save_golden(name, response, tool_calls, cost, duration)
@@ -403,7 +447,14 @@ def main():
         for s in scenarios:
             sev = "🔴" if s.get("severity") == "critical" else "⚪"
             print(f"  {sev} [{s.get('category')}] {s.get('name')}")
-            print(f"     Input: {s['input']['text'][:80]}")
+            # Multi-step scenarios have `steps:` instead of `input.text`.
+            if "input" in s and isinstance(s["input"], dict):
+                preview = s["input"].get("text", "")[:80]
+                print(f"     Input: {preview}")
+            elif s.get("steps"):
+                step_count = len(s["steps"])
+                first = s["steps"][0].get("text", "")[:60]
+                print(f"     Steps: {step_count} — first: {first}")
         print()
         return
 

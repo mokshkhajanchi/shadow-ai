@@ -92,11 +92,12 @@ def handle_user_message(
     Dispatches work to the thread pool so it doesn't block other events.
     """
     # Monitored channels: anyone can use the bot. Normal: check auth.
+    # Silently ignore unauthorized users — posting a public "not authorized"
+    # reply is noisy and advertises the bot's presence in channels where the
+    # user has no business with it.
     if not monitored and not is_authorized(user_id, config.allowed_user_ids):
-        slack_client.chat_postMessage(
-            channel=channel,
-            thread_ts=thread_ts,
-            text=f"Sorry <@{user_id}>, you're not authorized to use this bot.",
+        logger.info(
+            f"[AUTH] Ignored unauthorized user={user_id} channel={channel} thread={thread_ts}"
         )
         return
 
@@ -189,6 +190,8 @@ def _process_message(
         if monitored:
             # Load per-channel rules if they exist
             channel_rules = ""
+            invoke_rules = None
+            from shadow_ai.channel_rules import extract_invoke_rules, read_channel_rules
             from shadow_ai.db import db_get_channel_name, db_add_monitored_channel
             channel_name = db_get_channel_name(db_path, channel)
             # Backfill: resolve channel name from Slack API if missing in DB
@@ -203,39 +206,45 @@ def _process_message(
                     logger.warning(f"[MONITOR] Could not resolve channel name for {channel}: {e}. "
                                    "Re-run '@bot monitor #channel' to fix.")
             if channel_name:
-                from pathlib import Path as _Path
-                # Check multiple locations for channel rules file
-                candidates = [
-                    _Path(config.claude_work_dir).expanduser() / "channels" / f"{channel_name}.md",
-                    _Path("channels") / f"{channel_name}.md",
-                    _Path(__file__).parent.parent / "channels" / f"{channel_name}.md",
-                ]
-                rules_file = None
-                for candidate in candidates:
-                    if candidate.exists():
-                        rules_file = candidate
-                        break
-                if rules_file:
-                    try:
-                        channel_rules = rules_file.read_text(encoding="utf-8").strip()
-                        logger.info(f"[MONITOR] Loaded rules for #{channel_name} ({len(channel_rules)} chars)")
-                    except Exception:
-                        pass
+                channel_rules = read_channel_rules(channel_name, config.claude_work_dir)
+                if channel_rules:
+                    logger.info(f"[MONITOR] Loaded rules for #{channel_name} ({len(channel_rules)} chars)")
+                    invoke_rules = extract_invoke_rules(channel_rules)
 
             # Set flag so create_options knows to give full tools when rules exist
             config._has_channel_rules = bool(channel_rules)
 
             mode_label = "FULL ACCESS" if channel_rules else "READ-ONLY MODE"
+            # Rules-gated invocation: if the channel has `## When to invoke`
+            # rules, those are the AUTHORITATIVE filter. Claude MUST emit
+            # NO_RESPONSE as its first action when a message doesn't match.
+            # No tool calls, no explanation — suppression in handlers.py
+            # will hide both the reply and any bot reactions.
+            if invoke_rules:
+                gate_block = (
+                    "CHANNEL INVOCATION RULES — CHECK THESE FIRST, BEFORE ANYTHING ELSE.\n"
+                    "These rules are AUTHORITATIVE. Do not second-guess them.\n\n"
+                    f"{invoke_rules}\n\n"
+                    "If the user's message does NOT match these rules, your FIRST AND ONLY "
+                    "action is to reply with exactly 'NO_RESPONSE' and nothing else. "
+                    "Do not apologize. Do not explain. Do not ask clarifying questions. "
+                    "Do not call any tools. Do not search. Just output NO_RESPONSE and stop.\n"
+                    "If the message DOES match the rules, proceed normally.\n\n"
+                )
+            else:
+                gate_block = (
+                    "If the message doesn't need a response (it's a statement, "
+                    "acknowledgment, or not directed at anyone), reply with ONLY "
+                    "the text 'NO_RESPONSE' and nothing else.\n"
+                    "Questions ALWAYS need a response. If someone asks a question, "
+                    "you MUST answer it — never reply NO_RESPONSE to a question.\n\n"
+                )
             monitor_prefix = (
                 f"[MONITORED CHANNEL — {mode_label}]\n"
                 "You are monitoring this Slack channel and auto-replying.\n"
-                "Reply helpfully and concisely. If the message doesn't need a response "
-                "(it's a statement, acknowledgment, or not directed at anyone), "
-                "reply with ONLY the text 'NO_RESPONSE' and nothing else.\n"
-                "IMPORTANT: Questions ALWAYS need a response. If someone asks a question, "
-                "you MUST answer it — never reply NO_RESPONSE to a question, even if "
-                "it's not related to the channel's main topic.\n\n"
-                "MANDATORY SECURITY GUARDRAILS (NEVER VIOLATE):\n\n"
+                "Reply helpfully and concisely.\n\n"
+                + gate_block
+                + "MANDATORY SECURITY GUARDRAILS (NEVER VIOLATE):\n\n"
                 "DATA PROTECTION:\n"
                 "- NEVER read, print, or share: .env files, SSH keys (~/.ssh/), AWS/GCP/Kube credentials\n"
                 "- NEVER share API keys, tokens, passwords, secrets found in any file\n"
@@ -361,6 +370,7 @@ def _process_message(
 
         if prompt_lower.startswith("monitor "):
             import re as _re
+            from shadow_ai.channel_rules import extract_invoke_rules, read_channel_rules
             from shadow_ai.db import db_add_monitored_channel
             # Extract channel ID and name from Slack's <#C123|channel-name> format
             channel_match = _re.search(r"<#([CG][A-Z0-9]+)\|?([^>]*)", prompt)
@@ -372,6 +382,33 @@ def _process_message(
                 return
             target_channel = channel_match.group(1)
             channel_name = channel_match.group(2) or ""
+            # If channel name was not provided in the mention, resolve via Slack API.
+            if not channel_name:
+                try:
+                    info = slack_client.conversations_info(channel=target_channel)
+                    channel_name = info.get("channel", {}).get("name", "")
+                except Exception as e:
+                    logger.warning(f"[MONITOR] Could not resolve channel name for {target_channel}: {e}")
+            # Mandatory rules check: a `## When to invoke` section MUST exist
+            # before we accept monitoring. Otherwise Claude would be invoked
+            # for every message, or (after this feature) the bot would stay
+            # silent on every message — both bad, surface it here instead.
+            rules_text = read_channel_rules(channel_name, config.claude_work_dir)
+            if not extract_invoke_rules(rules_text):
+                slack_client.chat_postMessage(
+                    channel=channel, thread_ts=thread_ts,
+                    text=(
+                        f":x: Cannot monitor <#{target_channel}> yet. "
+                        f"Create `channels/{channel_name or '<channel-name>'}.md` "
+                        "with a `## When to invoke` section describing which messages "
+                        "should trigger the bot, then re-run the command."
+                    ),
+                )
+                logger.warning(
+                    f"[MONITOR] Rejected monitor for {target_channel} ({channel_name!r}): "
+                    "no '## When to invoke' section found"
+                )
+                return
             # Try to join (works for public channels, fails silently for private)
             try:
                 slack_client.conversations_join(channel=target_channel)
@@ -577,16 +614,13 @@ def _process_message(
         # Save response
         db_save_message(db_path, thread_ts, "assistant", response)
 
-        # Monitored channel: if Claude says NO_RESPONSE, skip posting
-        # Suppress if the response starts with "NO_RESPONSE" (model may add explanation after)
+        # Monitored channel: if Claude says NO_RESPONSE, stay fully silent —
+        # no reply, no reactions. The user should see no trace of the bot at
+        # all. Debugging happens via the log line below, not via Slack UI.
         if monitored and response.strip().startswith("NO_RESPONSE"):
             logger.info(f"[MONITOR] Skipped reply (NO_RESPONSE) for thread={thread_ts}")
             try:
                 slack_client.reactions_remove(channel=channel, name="robot_face", timestamp=message_ts)
-            except Exception:
-                pass
-            try:
-                slack_client.reactions_add(channel=channel, name="x", timestamp=message_ts)
             except Exception:
                 pass
         else:

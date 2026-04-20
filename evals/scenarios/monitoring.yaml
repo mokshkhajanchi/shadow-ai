@@ -35,3 +35,20 @@
       - "mcp__claude-in-chrome__*"
       - "mcp__playwright__*"
       - "WebFetch"
+
+# Rules-gated invocation (post-feature): a non-noise FYI should survive the
+# Python noise filter but trigger NO_RESPONSE from Claude because it doesn't
+# match the channel's `## When to invoke` rules. Silence = PASS.
+#
+# IMPORTANT: to exercise this, run the eval against a channel the bot is
+# actively monitoring (has a `channels/<name>.md` with `## When to invoke`).
+# Example: python -m evals.live --channel C_MONITORED --category monitoring
+- name: "monitored FYI statement suppressed via NO_RESPONSE"
+  category: monitoring
+  severity: critical
+  steps:
+    - action: "message"
+      text: "heads up that the deploy is done, just an FYI"
+      mention: false
+      expect_silence: true
+      timeout: 60

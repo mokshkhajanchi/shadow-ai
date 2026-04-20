@@ -9,16 +9,19 @@ import re
 import time
 
 from shadow_ai.config import BotConfig
+from shadow_ai.channel_rules import (
+    extract_invoke_rules,
+    read_channel_rules,
+)
 from shadow_ai.db import (
+    db_get_channel_name,
     db_get_daily_cost,
     db_get_recent_threads,
     db_get_total_cost,
-    db_is_active_thread,
     db_is_monitored_channel,
 )
 from shadow_ai.sessions import (
     get_active_session_count,
-    get_session,
     kill_all_sessions,
 )
 from shadow_ai.slack_helpers import (
@@ -26,7 +29,7 @@ from shadow_ai.slack_helpers import (
     markdown_to_slack,
     pop_detail,
 )
-from shadow_ai.handlers import handle_user_message, is_authorized
+from shadow_ai.handlers import handle_user_message
 
 logger = logging.getLogger("slack-claude-code")
 
@@ -205,8 +208,13 @@ def register_events(
         # Ignore messages from the bot itself
         if event.get("user") == bot_user_id:
             return
-        # Ignore messages from other bots/apps (bot_id present = automated message)
-        if event.get("bot_id"):
+        # Ignore automated messages from other apps/bots. Slack tags any
+        # message posted via an OAuth token with `bot_id` + `app_id`, even
+        # when a real human posted it via their own user token (e.g. the
+        # eval harness). Distinguish the two: real-bot messages have
+        # `bot_id` but no `user` field; user-token messages have BOTH, and
+        # the `user` is the real human. Only drop the former.
+        if event.get("bot_id") and not event.get("user"):
             return
         if event.get("subtype"):
             return
@@ -227,36 +235,56 @@ def register_events(
             return
 
         effective_thread_ts = thread_ts or message_ts
-        has_session = get_session(effective_thread_ts) is not None
-        has_db_thread = db_is_active_thread(db_path, effective_thread_ts)
 
         # Check if this is a monitored channel
         is_monitored = db_is_monitored_channel(db_path, channel)
 
-        # Monitored channel: new top-level message or reply in bot's thread
-        if is_monitored and not is_dm and not has_session and not has_db_thread:
-            # Skip noise messages
+        # Monitored channel: top-level message or reply triggers a bot response.
+        if is_monitored and not is_dm:
+            # Skip noise messages (cheap Python filter, no LLM cost)
             if _is_noise(text):
                 return
-            # Top-level message in monitored channel — reply in thread
+
+            # Rules are MANDATORY for monitored channels — check at the
+            # routing layer on TOP-LEVEL messages. If the channel rules
+            # file is missing the `## When to invoke` section, stay silent
+            # entirely. The actual decision of "does this message match
+            # the invocation rules" happens inside Claude via the
+            # monitored-prefix prompt (handlers.py), which emits
+            # NO_RESPONSE and gets suppressed end-to-end.
+            is_top_level = not event.get("thread_ts")
+            if is_top_level:
+                channel_name = db_get_channel_name(db_path, channel)
+                rules_text = read_channel_rules(channel_name, config.claude_work_dir)
+                invoke_rules = extract_invoke_rules(rules_text)
+                if not invoke_rules:
+                    logger.warning(
+                        f"[RULES] Monitored channel={channel} name={channel_name!r} "
+                        f"is missing the '## When to invoke' section — staying silent. "
+                        f"Add channels/{channel_name or '<name>'}.md with that section to activate."
+                    )
+                    return
+
             handle_user_message(
-                user_id, channel, message_ts, message_ts, text,
+                user_id, channel, effective_thread_ts, message_ts, text,
                 files=event.get("files"),
                 monitored=True,
                 **_hum_kwargs,
             )
             return
 
-        # Normal flow: DM or known active thread
-        if not is_dm and not has_session and not has_db_thread:
+        # Normal channels: the bot ONLY replies when explicitly @-mentioned
+        # (handled by app_mention). Any untagged message — even in a thread
+        # the bot touched earlier — is someone else's conversation. Staying
+        # silent is the right default; no "mid-session" continuation, no
+        # "this one's not for me" replies. DMs are the only exception.
+        if not is_dm:
             return
 
-        # Thread follow-ups in monitored channels pass monitored=True
-        # so auth is skipped (anyone in the channel can interact in threads)
         handle_user_message(
             user_id, channel, effective_thread_ts, message_ts, text,
             files=event.get("files"),
-            monitored=is_monitored,
+            monitored=False,
             **_hum_kwargs,
         )
 
