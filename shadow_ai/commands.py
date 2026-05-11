@@ -103,7 +103,7 @@ Follow these steps:
 4. **Post review comments on the PR**:
    a. Post a general review comment using `mcp__azure-devops__repo_create_pull_request_thread` with:
       - repositoryId: "{repo_name}", pullRequestId: {pr_id}, project: "FyndPlatformCore"
-      - content: Full review in markdown, starting with "## Code Review by moksh.ai"
+      - content: Full review in markdown, starting with "## Code Review by shadow.ai"
       - status: "Active" (always keep review threads active for visibility)
 
    b. For specific issues (max 5), post inline comments using the same tool with:
