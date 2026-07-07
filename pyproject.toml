@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "shadow-ai"
-version = "2.3.0"
+version = "2.4.0"
 description = "shadow.ai — Your AI co-worker that handles everyday tasks via Slack"
 readme = "README.md"
 requires-python = ">=3.11"

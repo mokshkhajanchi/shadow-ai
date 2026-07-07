@@ -43,6 +43,7 @@ Slack @mention/DM → events.py → handle_user_message() → _process_message()
                                                                                     ↓
                                                               Continue (in-memory session)
                                                               Resume (SDK-native, from session_id)
+                                                                — force_resume_session_id: resume a LOCAL session by id (resume cmd)
                                                               Restore (text-replay from DB history)
                                                               New (fresh session)
 ```
@@ -51,7 +52,8 @@ Slack @mention/DM → events.py → handle_user_message() → _process_message()
 
 - **`app.py`** — Entry point. Creates Slack Bolt app, initializes DB, discovers MCP servers, installs skills, runs migrations, starts Socket Mode listener.
 - **`events.py`** — Slack event handlers (`app_mention`, `message`, `app_home_opened`, actions). Handles channel monitoring routing and noise filtering. No slash commands — everything via @mention.
-- **`handlers.py`** — Core message processing. Bot commands (status, kill all, monitor, run workflow, summarize, review, test) parsed before Claude invocation. Monitored channel prefix with security guardrails and anti-hallucination rules injected here.
+- **`handlers.py`** — Core message processing. Bot commands (status, kill all, monitor, run workflow, summarize, review, test, sessions, resume) parsed before Claude invocation. Monitored channel prefix with security guardrails and anti-hallucination rules injected here.
+- **`local_sessions.py`** — Discovers/resolves local Claude Code session transcripts in `~/.claude/projects/*/*.jsonl` (parses `cwd`, `gitBranch`, `summary`, first user msg). Powers `sessions` (list) and `resume <id-or-prefix> <task>` (resume any local session). Pure stdlib, no SDK/LLM cost.
 - **`claude_runner.py`** — Claude Code SDK lifecycle. Four paths: `_continue_query()` (active in-memory session), `_resume_and_query()` (SDK-native resume via stored `session_id`), `_restore_and_query()` (text-replay from DB history — fallback when resume fails), `_new_session_and_query()`. Each runs in a dedicated thread with its own asyncio event loop.
 - **`claude_options.py`** — Builds `ClaudeAgentOptions` with system prompt (identity + response style + anti-hallucination + skills + notes), tool restrictions, model selection (default: opus), thinking mode. Loads agents and skills.
 - **`guardrails.py`** — Code-level security for monitored channels. `can_use_tool` callback blocks destructive commands, secret reads, browser tools before execution.
@@ -125,6 +127,16 @@ Claude handles note-saving naturally via the Write tool — no keyword detection
 ### Workflows
 
 `@bot run <workflow> key=value` loads a workflow template from `workflows/`, substitutes parameters, and injects as a prompt. Claude executes step-by-step.
+
+### Resuming Local Claude Code Sessions
+
+The bot can continue ANY Claude Code session you ran locally on the same machine — full prior context (tool calls + thinking), generic for any follow-up task.
+
+- `@bot sessions [filter]` — lists recent local sessions (`local_sessions.scan_local_sessions`): id · repo · branch · time · summary. Optional substring filter matches cwd/branch/summary/first message. No LLM cost (directory scan).
+- `@bot resume <id-or-prefix> <task>` — resolves the reference (exact id wins; unique prefix accepted; ambiguous → lists candidates), then routes through `invoke_claude_code(force_resume_session_id=..., cwd_override=...)`. The resumed session runs in the transcript's **original `cwd`** so edits land in the right repo. Refuses if the cwd no longer exists.
+- After the first resume, the session_id + cwd are bound to the Slack thread (`db_set_claude_session_id` + `db_set_session_cwd`). Follow-up @mentions in the same thread auto-continue via the normal resume path with the bound cwd — no id needed again.
+- `create_options(cwd_override=...)` overrides the configured `CLAUDE_WORK_DIR` for that session only.
+- Example use case: develop a feature locally → reviewer bot comments on the PR → `@bot resume <id> fix the PR review comments` → bot continues the exact session and applies fixes in the feature's repo.
 
 ### Azure DevOps MCP
 

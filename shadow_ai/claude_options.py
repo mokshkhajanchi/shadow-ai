@@ -119,6 +119,7 @@ def create_options(
     knowledge_dirs: list[str] | None = None,
     monitored: bool = False,
     resume: str | None = None,
+    cwd_override: str | None = None,
 ):
     """
     Build a ClaudeAgentOptions instance for a new or restored SDK session.
@@ -149,7 +150,13 @@ def create_options(
         allowed_tools = list(getattr(config, "allowed_tools", ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "Agent"]))
         max_turns = getattr(config, "max_turns", 30)
     permission_mode = getattr(config, "permission_mode", "acceptEdits")
-    cwd = os.path.expanduser(getattr(config, "claude_work_dir", "~/Projects"))
+    # cwd_override lets a resumed local session run in its ORIGINAL repo path
+    # (read from the session transcript) instead of the configured work dir,
+    # so edits land in the right repo.
+    if cwd_override:
+        cwd = os.path.expanduser(cwd_override)
+    else:
+        cwd = os.path.expanduser(getattr(config, "claude_work_dir", "~/Projects"))
     default_model = getattr(config, "claude_model", None) or "opus"
     default_thinking = getattr(config, "claude_thinking", "off")
     thinking_budget = getattr(config, "claude_thinking_budget", 10000)

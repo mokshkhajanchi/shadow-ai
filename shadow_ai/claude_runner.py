@@ -323,6 +323,7 @@ async def _new_session_and_query(
     knowledge_index_file: str = "",
     knowledge_dirs: list[str] = None,
     db_set_claude_session_id_fn=None,
+    cwd_override: str = None,
 ) -> tuple[str, dict | None]:
     """Create a new SDK session and query it."""
     options = create_options_fn(
@@ -333,6 +334,7 @@ async def _new_session_and_query(
         mcp_tool_catalog=mcp_tool_catalog,
         knowledge_index_file=knowledge_index_file,
         knowledge_dirs=knowledge_dirs,
+        cwd_override=cwd_override,
     )
     sdk_client = await _connect_with_retry(options, thread_ts=thread_ts)
     cli_pid = _get_cli_pid(sdk_client)
@@ -380,6 +382,7 @@ async def _restore_and_query(
     knowledge_index_file: str = "",
     knowledge_dirs: list[str] = None,
     db_set_claude_session_id_fn=None,
+    cwd_override: str = None,
 ) -> tuple[str, dict | None]:
     """Restore a session from DB history and query with a new prompt."""
     options = create_options_fn(
@@ -390,6 +393,7 @@ async def _restore_and_query(
         mcp_tool_catalog=mcp_tool_catalog,
         knowledge_index_file=knowledge_index_file,
         knowledge_dirs=knowledge_dirs,
+        cwd_override=cwd_override,
     )
     sdk_client = await _connect_with_retry(options, thread_ts=thread_ts)
     cli_pid = _get_cli_pid(sdk_client)
@@ -453,11 +457,15 @@ async def _resume_and_query(
     knowledge_index_file: str = "",
     knowledge_dirs: list[str] = None,
     db_set_claude_session_id_fn=None,
+    cwd_override: str = None,
 ) -> tuple[str, dict | None]:
     """Resume an existing Claude SDK session by session_id and query with a new prompt.
 
     The SDK loads the full prior transcript from ~/.claude/projects/<hash>/<session_id>.jsonl,
     so we don't need to re-inject history — unlike _restore_and_query.
+
+    ``cwd_override`` runs the resumed session in its original repo path (read from
+    the transcript) so file edits land in the right repo.
     """
     options = create_options_fn(
         config,
@@ -468,6 +476,7 @@ async def _resume_and_query(
         knowledge_index_file=knowledge_index_file,
         knowledge_dirs=knowledge_dirs,
         resume=claude_session_id,
+        cwd_override=cwd_override,
     )
     sdk_client = await _connect_with_retry(options, thread_ts=thread_ts)
     cli_pid = _get_cli_pid(sdk_client)
@@ -595,10 +604,16 @@ def invoke_claude_code(
     knowledge_index_file: str = "",
     knowledge_dirs: list[str] = None,
     db_set_claude_session_id_fn=None,
+    cwd_override: str = None,
+    force_resume_session_id: str = None,
 ) -> tuple[str, dict | None]:
     """
     Synchronous entry point. Called from the thread pool.
     Routes to: continue existing | resume (SDK-native) | restore from DB | new session.
+
+    ``force_resume_session_id`` resumes a specific local Claude Code session by id
+    (the ``resume <id>`` command), bypassing the in-memory/DB lookup. ``cwd_override``
+    runs that resumed session in its original repo path so edits land correctly.
 
     All dependencies are passed explicitly instead of using globals.
     """
@@ -625,7 +640,24 @@ def invoke_claude_code(
         knowledge_index_file=knowledge_index_file,
         knowledge_dirs=knowledge_dirs,
         db_set_claude_session_id_fn=db_set_claude_session_id_fn,
+        cwd_override=cwd_override,
     )
+
+    # Explicit `resume <id>`: force the SDK-native resume path against the given
+    # local session, ignoring any in-memory session or DB-stored id. This is a
+    # fresh Slack thread pointing at a local Claude Code session. On success the
+    # caller binds the session_id to this thread so follow-ups auto-continue.
+    if force_resume_session_id and not session:
+        logger.info(
+            f"[RESUME-LOCAL] thread={thread_ts}, session_id={force_resume_session_id}, "
+            f"cwd={cwd_override}"
+        )
+        return _run_in_new_loop(
+            _resume_and_query, thread_ts, request_timeout,
+            force_resume_session_id, prompt, thread_ts, progress_ts, file_blocks,
+            model=model, thinking_override=thinking_override,
+            **session_kwargs,
+        )
 
     if session:
         logger.info(f"[CONTINUE] thread={thread_ts}")

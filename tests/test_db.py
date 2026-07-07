@@ -15,6 +15,8 @@ from shadow_ai.db import (
     db_set_claude_session_id,
     db_get_claude_session_id,
     db_clear_claude_session_id,
+    db_set_session_cwd,
+    db_get_session_cwd,
 )
 
 
@@ -113,3 +115,23 @@ class TestClaudeSessionId:
         db_create_thread(db_path, "1.1", "C0001")
         db_set_claude_session_id(db_path, "1.1", "sess-xyz")
         assert db_get_claude_session_id(db_path, "1.1") == "sess-xyz"
+
+
+class TestSessionCwd:
+    def test_null_by_default(self, db_path):
+        db_create_thread(db_path, "1.1", "C0001")
+        assert db_get_session_cwd(db_path, "1.1") is None
+
+    def test_set_and_get(self, db_path):
+        db_create_thread(db_path, "1.1", "C0001")
+        db_set_session_cwd(db_path, "1.1", "/Users/me/repo/avis")
+        assert db_get_session_cwd(db_path, "1.1") == "/Users/me/repo/avis"
+
+    def test_overwrite(self, db_path):
+        db_create_thread(db_path, "1.1", "C0001")
+        db_set_session_cwd(db_path, "1.1", "/r/a")
+        db_set_session_cwd(db_path, "1.1", "/r/b")
+        assert db_get_session_cwd(db_path, "1.1") == "/r/b"
+
+    def test_get_for_nonexistent_thread(self, db_path):
+        assert db_get_session_cwd(db_path, "missing") is None

@@ -23,6 +23,8 @@ from shadow_ai.db import (
     db_get_claude_session_id,
     db_clear_claude_session_id,
     db_set_last_slack_ts,
+    db_set_session_cwd,
+    db_get_session_cwd,
 )
 from shadow_ai.sessions import (
     get_active_session_count,
@@ -313,13 +315,21 @@ def _process_message(
         if monitored:
             _effective_create_options_fn = lambda *args, **kwargs: create_options_fn(*args, monitored=True, **kwargs)
 
-        def _invoke(p, t, progress_ts=None, file_blocks=None, model=None, thinking_override=None):
+        def _invoke(p, t, progress_ts=None, file_blocks=None, model=None, thinking_override=None,
+                    cwd_override=None, force_resume_session_id=None):
+            # Follow-ups in a thread that resumed a local session must keep
+            # running in that session's repo. If the caller didn't pass an
+            # explicit cwd_override, fall back to the thread's bound cwd.
+            if cwd_override is None:
+                cwd_override = db_get_session_cwd(db_path, t)
             return invoke_claude_code(
                 p, t,
                 progress_ts=progress_ts,
                 file_blocks=file_blocks,
                 model=model,
                 thinking_override=thinking_override,
+                cwd_override=cwd_override,
+                force_resume_session_id=force_resume_session_id,
                 config=config,
                 slack_client=slack_client,
                 get_session_fn=get_session,
@@ -439,6 +449,115 @@ def _process_message(
                 text=f":octagonal_sign: Stopped monitoring <#{target_channel}>.",
             )
             logger.info(f"[MONITOR] Stopped monitoring {target_channel} by {user_id}")
+            return
+
+        # ── Local session resume commands ──
+        # `sessions [filter]` — list recent local Claude Code sessions so the
+        # user can find a session id to resume.
+        if prompt_lower == "sessions" or prompt_lower.startswith("sessions "):
+            from shadow_ai.local_sessions import scan_local_sessions, format_session_list
+            filter_text = user_text.strip()[len("sessions"):].strip()
+            sessions = scan_local_sessions(filter_text=filter_text, limit=10)
+            slack_client.chat_postMessage(
+                channel=channel, thread_ts=thread_ts,
+                text=format_session_list(sessions),
+            )
+            return
+
+        # `resume <id-or-prefix> <task>` — resume a local Claude Code session
+        # (full prior context via SDK-native resume) and continue it with the
+        # given task. Binds the session to this thread so follow-ups continue.
+        if prompt_lower.startswith("resume "):
+            from shadow_ai.local_sessions import resolve_session, format_session_list
+            rest = user_text.strip()[len("resume "):].strip()
+            parts = rest.split(None, 1)
+            # Slack may wrap a pasted id in a code span (`id`) or angle-link it.
+            ref = parts[0].strip("`<>").strip() if parts else ""
+            task = parts[1].strip() if len(parts) > 1 else ""
+
+            res = resolve_session(ref)
+            if res.error:
+                slack_client.chat_postMessage(
+                    channel=channel, thread_ts=thread_ts,
+                    text=(
+                        f":x: {res.error}\n"
+                        "Run `sessions` to list recent local sessions."
+                    ),
+                )
+                return
+            if res.ambiguous:
+                slack_client.chat_postMessage(
+                    channel=channel, thread_ts=thread_ts,
+                    text=(
+                        f":warning: `{ref}` matches multiple sessions — be more specific:\n\n"
+                        + format_session_list(res.ambiguous)
+                    ),
+                )
+                return
+
+            sess = res.session
+            if not sess.cwd:
+                slack_client.chat_postMessage(
+                    channel=channel, thread_ts=thread_ts,
+                    text=f":x: Session `{sess.short_id}` has no recorded working directory; cannot resume it.",
+                )
+                return
+            import os as _os
+            if not _os.path.isdir(_os.path.expanduser(sess.cwd)):
+                slack_client.chat_postMessage(
+                    channel=channel, thread_ts=thread_ts,
+                    text=(
+                        f":x: Session `{sess.short_id}`'s repo no longer exists at its "
+                        "original path, so it can't be resumed here."
+                    ),
+                )
+                return
+            if not task:
+                slack_client.chat_postMessage(
+                    channel=channel, thread_ts=thread_ts,
+                    text=(
+                        f":information_source: Found session `{sess.short_id}` "
+                        f"(`{sess.git_branch or '?'}`). Add a task:\n"
+                        f"`resume {sess.short_id} <what to do>`"
+                    ),
+                )
+                return
+
+            logger.info(
+                f"[RESUME-LOCAL] thread={thread_ts} resuming session={sess.session_id} "
+                f"cwd={sess.cwd} branch={sess.git_branch}"
+            )
+
+            # Track thread + bind the session id and cwd so follow-ups auto-continue.
+            db_create_thread(db_path, thread_ts, channel)
+            db_save_message(db_path, thread_ts, "user", task, user_id=user_id)
+            db_set_session_cwd(db_path, thread_ts, sess.cwd)
+
+            progress_msg = slack_client.chat_postMessage(
+                channel=channel, thread_ts=thread_ts,
+                text=f":rewind: Resuming local session `{sess.short_id}` (`{sess.git_branch or '?'}`)...",
+            )
+            progress_ts = progress_msg.get("ts")
+
+            response, cost_info = _invoke(
+                task, thread_ts,
+                progress_ts=progress_ts,
+                model=model_override, thinking_override=thinking_override,
+                cwd_override=sess.cwd,
+                force_resume_session_id=sess.session_id,
+            )
+            if cost_info:
+                _db_save_usage(thread_ts, cost_info)
+                # Persist the (possibly new) SDK session_id for clean follow-ups.
+                new_sid = cost_info.get("session_id")
+                if new_sid:
+                    db_set_claude_session_id(db_path, thread_ts, new_sid)
+            db_save_message(db_path, thread_ts, "assistant", response)
+            try:
+                slack_client.reactions_add(channel=channel, name="white_check_mark", timestamp=message_ts)
+            except Exception:
+                pass
+            _send_response(channel, thread_ts, response)
             return
 
         # ── Workflow commands ──

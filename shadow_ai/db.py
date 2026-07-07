@@ -102,6 +102,13 @@ def init_db(db_path: str):
                 conn.execute("ALTER TABLE threads ADD COLUMN claude_session_id TEXT")
             except sqlite3.OperationalError:
                 pass  # column already exists
+            # Migrate: add session_cwd to threads if missing. Set when a thread
+            # resumes a local Claude Code session, so follow-ups in the same
+            # thread keep running in that session's original repo path.
+            try:
+                conn.execute("ALTER TABLE threads ADD COLUMN session_cwd TEXT")
+            except sqlite3.OperationalError:
+                pass  # column already exists
             conn.commit()
     logger.info(f"Database initialized at {db_path}")
 
@@ -215,6 +222,28 @@ def db_clear_claude_session_id(db_path: str, thread_ts: str):
                 (now, thread_ts),
             )
             conn.commit()
+
+
+def db_set_session_cwd(db_path: str, thread_ts: str, cwd: str):
+    """Persist the working directory of a resumed local session for a thread."""
+    now = datetime.now().isoformat()
+    with _db_lock:
+        with _db_conn(db_path) as conn:
+            conn.execute(
+                "UPDATE threads SET session_cwd = ?, updated_at = ? WHERE thread_ts = ?",
+                (cwd, now, thread_ts),
+            )
+            conn.commit()
+
+
+def db_get_session_cwd(db_path: str, thread_ts: str) -> str | None:
+    """Get the resumed-session working directory for a thread (None if unset)."""
+    with _db_lock:
+        with _db_conn(db_path) as conn:
+            row = conn.execute(
+                "SELECT session_cwd FROM threads WHERE thread_ts = ?", (thread_ts,)
+            ).fetchone()
+    return row["session_cwd"] if row and row["session_cwd"] else None
 
 
 # ─── Messages ─────────────────────────────────────────────────────────────────
