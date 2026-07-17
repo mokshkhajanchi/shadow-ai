@@ -19,6 +19,10 @@ shadow-ai              # Start the bot
 shadow-ai init         # Setup wizard (creates .env)
 shadow-ai doctor       # Check prerequisites
 
+# Run and keep serving while the laptop is LOCKED / lid CLOSED
+scripts/run-awake.sh              # caffeinate -s + sudo pmset disablesleep (survives closed lid). Keep on AC power.
+NO_DISABLESLEEP=1 scripts/run-awake.sh   # caffeinate only, no sudo — lid must stay OPEN
+
 # Test
 pytest tests/ -v                          # All tests (243)
 pytest tests/test_system_prompt.py -v     # Single file
@@ -167,6 +171,16 @@ pytest tests/ -v
 ```
 
 All 243 tests must pass before committing.
+
+## Keeping the Bot Alive While Locked
+
+The bot uses Slack Socket Mode (a persistent WebSocket), so it only serves messages while the process is running AND the machine isn't asleep. Three distinct states matter — they are NOT the same thing:
+
+- **Screen locked, lid open** — processes keep running. `caffeinate -i` (prevent idle system sleep) is enough. Battery `sleep` is 10 min by default, so without caffeinate the bot dies ~10 min after locking on battery.
+- **Idle system sleep on battery** — `caffeinate -i` alone can be overridden by aggressive power management. `caffeinate -s` (PreventSystemSleep) is stronger and honored on battery. `scripts/run-awake.sh` uses `-s -i -m`.
+- **Lid closed (clamshell)** — closing the lid suspends **networking** (Wi-Fi), so Socket Mode dies with `BrokenPipeError` / DNS `nodename nor servname` errors even while the CPU stays awake via caffeinate. `caffeinate` CANNOT prevent this; only `sudo pmset -a disablesleep 1` keeps the network alive with the lid shut. This is the step people miss — symptom is a reconnect loop in the log with `SleepDisabled 0`.
+
+`scripts/run-awake.sh` (default) sets `disablesleep 1` up front (one sudo prompt), **verifies `SleepDisabled=1` actually took** (aborts otherwise instead of silently failing), runs the bot as a **child** of `caffeinate -s -i -m`, and reverts `disablesleep 0` on exit. Requires **AC power** — with sleep disabled the Mac never sleeps and battery drains. `NO_DISABLESLEEP=1` skips the sudo/pmset for the lid-open case. Check for orphaned power assertions with `pmset -g assertions`.
 
 ## Configuration
 
